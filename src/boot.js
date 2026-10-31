@@ -15,6 +15,7 @@ function boasVindas() {
   document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.cat-card,.gcard')) { e.preventDefault(); e.target.click(); } });
   render();
   aplicarLogo();
+  api.appVersion().then((v) => { const e = $('#versaoApp'); if (e) e.textContent = 'Versão ' + v; });
   api.getSettings().then((c) => { ui.bk = c; if (ui.view === 'painel') render(); });
   boasVindas();
   window.__ready = true;

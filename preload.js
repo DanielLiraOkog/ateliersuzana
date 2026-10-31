@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openText: (ext) => ipcRenderer.invoke('file:open-text', ext),
   savePdf: (name) => ipcRenderer.invoke('pdf:save', name),
   dataDir: () => ipcRenderer.invoke('app:data-dir'),
+  appVersion: () => ipcRenderer.invoke('app:version'),
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (p) => ipcRenderer.invoke('settings:set', p),
   chooseBackupDir: () => ipcRenderer.invoke('backup:choose-dir'),

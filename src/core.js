@@ -7,6 +7,7 @@ const api = window.electronAPI || {
   openText: (ext) => pickFile('.' + ext),
   savePdf: async () => { window.print(); return true; },
   dataDir: async () => '(modo navegador)',
+  appVersion: async () => 'navegador',
   getSettings: async () => ({ backupDir: '(modo navegador)', frequencia: 'diario', manter: 30, ultimo: 0, ultimoErro: null, dataDir: '(modo navegador)' }),
   setSettings: async (p) => ({ backupDir: '(modo navegador)', frequencia: p.frequencia || 'diario', manter: p.manter || 30, ultimo: 0, ultimoErro: null }),
   chooseBackupDir: async () => null, backupNow: async () => ({ ok: false, erro: 'Disponível só no programa instalado.' }),

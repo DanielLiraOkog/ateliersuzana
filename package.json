@@ -1,7 +1,7 @@
 {
   "name": "atelier-suzana-lira",
   "productName": "Atelier Suzana Lira",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Gestão do Atelier Suzana Lira: produtos, materiais, pedidos e finanças",
   "main": "main.js",
   "author": "Atelier Suzana Lira",
@@ -18,8 +18,42 @@
   "build": {
     "appId": "br.com.atelier.suzanalira",
     "productName": "Atelier Suzana Lira",
-    "files": ["main.js", "preload.js", "src/**/*", "build/**/*"],
-    "win": { "target": ["nsis"], "icon": "build/icon.ico" },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "language": "1046" }
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "build/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "Atelier-Suzana-Lira-${version}-Windows.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "language": "1046",
+      "artifactName": "Atelier-Suzana-Lira-Instalador-${version}.${ext}"
+    },
+    "extraFiles": [
+      {
+        "from": "build/COMO-ATUALIZAR.txt",
+        "to": "COMO-ATUALIZAR.txt"
+      }
+    ]
   }
 }

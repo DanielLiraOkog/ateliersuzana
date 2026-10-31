@@ -1,0 +1,24 @@
+ATELIER SUZANA LIRA - COMO ATUALIZAR O PROGRAMA
+================================================
+
+SEUS DADOS NAO SAO TOCADOS.
+Tudo o que voce cadastra (produtos, fotos, pedidos, clientes, financeiro)
+fica na pasta  Documentos\Atelier Suzana Lira  e NUNCA dentro da pasta do programa.
+Trocar, apagar ou substituir a pasta do programa nao apaga nenhum dado.
+Alem disso, na primeira vez que o programa abre depois de uma atualizacao,
+ele guarda sozinho uma copia dos seus dados (arquivo "antes-de-atualizar...").
+
+PASSO A PASSO
+1) Feche o programa, se ele estiver aberto.
+2) Clique com o botao direito no arquivo .zip novo > Propriedades >
+   marque "Desbloquear" (se aparecer) > OK.  (Isso evita avisos do Windows.)
+3) Clique com o botao direito no .zip > "Extrair tudo...".
+   - Primeira vez: escolha uma pasta, por exemplo a Area de Trabalho.
+   - Atualizando: escolha a MESMA pasta de antes e, se o Windows perguntar,
+     clique em "Substituir os arquivos no destino".
+4) Abra o arquivo  "Atelier Suzana Lira.exe"  que esta dentro da pasta.
+   Dica: clique nele com o botao direito > Enviar para > Area de trabalho (criar atalho).
+5) Se aparecer a tela azul "O Windows protegeu o computador", clique em
+   "Mais informacoes" e depois em "Executar assim mesmo".
+
+Para conferir a versao: ela aparece no canto inferior esquerdo do programa.

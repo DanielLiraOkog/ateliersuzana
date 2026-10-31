@@ -26,9 +26,22 @@ function stamp() {
   const d = new Date(), p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
 }
-function podar(prefixo, manter) {
-  const arqs = fs.readdirSync(cfg.backupDir).filter((f) => f.startsWith(prefixo) && f.endsWith('.json')).sort();
-  arqs.slice(0, Math.max(0, arqs.length - manter)).forEach((f) => { try { fs.unlinkSync(path.join(cfg.backupDir, f)); } catch {} });
+function podar(prefixo, manter, dir = cfg.backupDir) {
+  const arqs = fs.readdirSync(dir).filter((f) => f.startsWith(prefixo) && f.endsWith('.json')).sort();
+  arqs.slice(0, Math.max(0, arqs.length - manter)).forEach((f) => { try { fs.unlinkSync(path.join(dir, f)); } catch {} });
+}
+// Na primeira abertura depois de trocar a versão do programa, guarda uma cópia dos dados antes de qualquer coisa.
+// O programa em si nunca grava dentro da pasta dele: os dados ficam sempre em Documentos.
+function copiaAntesDeAtualizar() {
+  const atual = app.getVersion();
+  if (cfg.versaoApp === atual) return;
+  if (fs.existsSync(dataFile)) {
+    const nome = `antes-de-atualizar-v${cfg.versaoApp || 'anterior'}-para-v${atual}-${stamp()}.json`;
+    for (const dir of [cfg.backupDir, path.join(dataDir, 'backups')]) {
+      try { fs.mkdirSync(dir, { recursive: true }); fs.copyFileSync(dataFile, path.join(dir, nome)); podar('antes-de-atualizar-', 5, dir); break; } catch {}
+    }
+  }
+  cfg.versaoApp = atual; gravarCfg();
 }
 // Copia dados.json para a pasta escolhida. Sem `forcar`, só copia se houve alteração desde a última cópia.
 function fazerBackup(forcar = false) {
@@ -100,6 +113,7 @@ ipcMain.handle('pdf:save', async (_e, suggested) => {
   return true;
 });
 ipcMain.handle('app:data-dir', () => dataDir);
+ipcMain.handle('app:version', () => app.getVersion());
 ipcMain.handle('settings:get', () => publico());
 ipcMain.handle('settings:set', (_e, p) => {
   if (['desligado', 'sessao', '1h', '6h', 'diario', 'semanal'].includes(p.frequencia)) cfg.frequencia = p.frequencia;
@@ -140,6 +154,7 @@ ipcMain.handle('app:set-icon', (_e, dataUrl) => {
 app.whenReady().then(() => {
   fs.mkdirSync(dataDir, { recursive: true });
   cfg = lerCfg(); gravarCfg();
+  copiaAntesDeAtualizar();
   if (backupDevido()) fazerBackup();
   agendar();
   createWindow();

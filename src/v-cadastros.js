@@ -169,7 +169,7 @@ function lerProdutoForm(form) {
   const f = new FormData(form);
   const mats = f.getAll('av_mat'), qtds = f.getAll('av_qtd');
   return {
-    foto: f.get('foto') || '', nome: (f.get('nome') || '').trim(), codigo: f.get('codigo'), categoria: (f.get('categoria') || '').trim(),
+    catalogo: f.get('catalogo') === 'on', foto: f.get('foto') || '', nome: (f.get('nome') || '').trim(), codigo: f.get('codigo'), categoria: (f.get('categoria') || '').trim(),
     tecidoId: f.get('tecidoId') ? Number(f.get('tecidoId')) : '', consumoTecido: parseFloat(f.get('consumoTecido')) || 0,
     aviamentos: mats.map((m, i) => ({ materialId: Number(m), qtd: parseFloat(qtds[i]) || 0 })).filter((a) => a.materialId),
     tempoMin: parseFloat(f.get('tempoMin')) || 0, margemAtacado: parseFloat(f.get('margemAtacado')) || 0, margemVarejo: parseFloat(f.get('margemVarejo')) || 0, obs: f.get('obs'),
@@ -189,7 +189,7 @@ function formProduto(p, copia) {
       ${F.select('tecidoId', 'Tecido padrão', [['', '— nenhum —'], ...S.materiais.filter((m) => m.tipo === 'tecido').map((m) => [m.id, `${m.nome} (${money(m.custo)}/${m.unidade})`])], base.tecidoId)}
       ${F.num('consumoTecido', 'Quanto de tecido gasta (metros)', base.consumoTecido, 'min="0"')}${F.num('tempoMin', 'Tempo de produção (minutos)', base.tempoMin, 'min="0"')}</div>
       <h3>Aviamentos</h3><div id="aviams">${base.aviamentos.map(linhaAviam).join('')}</div><button type="button" class="btn sm" data-act="addAviam">+ Aviamento</button>
-      <div class="form-grid" style="margin-top:14px">${F.num('margemAtacado', 'Margem de lucro ATACADO (%)', base.margemAtacado, 'min="0" max="95"')}${F.num('margemVarejo', 'Margem de lucro VAREJO (%)', base.margemVarejo, 'min="0" max="95"')}${F.area('obs', 'Observações', base.obs)}</div>
+      <div class="form-grid" style="margin-top:14px">${F.num('margemAtacado', 'Margem de lucro ATACADO (%)', base.margemAtacado, 'min="0" max="95"')}${F.num('margemVarejo', 'Margem de lucro VAREJO (%)', base.margemVarejo, 'min="0" max="95"')}${F.area('obs', 'Observações', base.obs)}<label class="check full"><input type="checkbox" name="catalogo" ${base.catalogo !== false ? 'checked' : ''}> Mostrar este produto no Catálogo</label></div>
       ${novo ? '' : '<p><button type="button" class="btn danger-o sm" data-act="excluirProduto" data-id="' + p.id + '">Excluir produto</button></p>'}
     </div><aside class="calc card" id="calcBox"></aside></div>`,
     onOpen: (form) => {

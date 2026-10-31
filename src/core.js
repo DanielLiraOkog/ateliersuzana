@@ -80,8 +80,8 @@ function toast(msg) {
 }
 
 // ---------- fotos ----------
-// Reduz a foto para no máx. 480 px (JPEG) para o arquivo de dados não crescer demais.
-function redimensionar(file, max = 480) {
+// Reduz a foto para no máx. 640 px (JPEG) para o arquivo de dados não crescer demais.
+function redimensionar(file, max = 640) {
   return new Promise((resolve, reject) => {
     const img = new Image(), url = URL.createObjectURL(file);
     img.onload = () => {
@@ -140,7 +140,7 @@ function openModal({ title, body, onSubmit, wide = false, submit = 'Salvar', onO
   ov.className = 'overlay';
   ov.innerHTML = `<form class="modal ${wide ? 'wide' : ''}"><header><h2>${esc(title)}</h2><button type="button" class="x" data-close>×</button></header>
     <div class="modal-body">${body}</div>
-    <footer><button type="button" class="btn ghost" data-close>Cancelar</button>${onSubmit ? `<button class="btn primary">${submit}</button>` : ''}</footer></form>`;
+    <footer><button type="button" class="btn ghost" data-close>${onSubmit ? 'Cancelar' : 'Fechar'}</button>${onSubmit ? `<button class="btn primary">${submit}</button>` : ''}</footer></form>`;
   document.body.appendChild(ov);
   const form = $('form', ov);
   const close = () => ov.remove();

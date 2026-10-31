@@ -71,8 +71,8 @@ views.materiais = function () {
   const lista = S.materiais.filter((m) => !q || norm(m.nome).includes(q)).sort((a, b) => a.nome.localeCompare(b.nome));
   const tabs = `<div class="chips"><button class="chip ${aba === 'estoque' ? 'on' : ''}" data-act="matTab" data-t="estoque">Materiais e estoque</button><button class="chip ${aba === 'compras' ? 'on' : ''}" data-act="matTab" data-t="compras">Compras feitas</button></div>`;
   const corpo = aba === 'estoque'
-    ? (lista.length ? `<table class="t"><thead><tr><th>Material</th><th>Tipo</th><th class="r">Custo</th><th class="r">Em estoque</th><th class="r">Mínimo</th><th>Fornecedor</th></tr></thead><tbody>
-      ${lista.map((m) => `<tr class="click" data-act="editarMaterial" data-id="${m.id}"><td>${esc(m.nome)}</td><td>${m.tipo === 'tecido' ? 'Tecido' : 'Aviamento'}</td><td class="r">${money(m.custo)} / ${esc(m.unidade)}</td>
+    ? (lista.length ? `<table class="t"><thead><tr><th></th><th>Material</th><th>Tipo</th><th class="r">Custo</th><th class="r">Em estoque</th><th class="r">Mínimo</th><th>Fornecedor</th></tr></thead><tbody>
+      ${lista.map((m) => `<tr class="click" data-act="editarMaterial" data-id="${m.id}"><td class="th">${thumb(m.foto, m.nome)}</td><td>${esc(m.nome)}</td><td>${m.tipo === 'tecido' ? 'Tecido' : 'Aviamento'}</td><td class="r">${money(m.custo)} / ${esc(m.unidade)}</td>
       <td class="r ${m.minimo > 0 && m.estoque <= m.minimo ? 'bad' : ''}">${num(m.estoque)} ${esc(m.unidade)}${m.minimo > 0 && m.estoque <= m.minimo ? ' ⚠' : ''}</td><td class="r muted">${m.minimo ? num(m.minimo) : '—'}</td><td>${esc(m.fornecedor)}</td></tr>`).join('')}</tbody></table>`
       : '<p class="empty big">Cadastre seus tecidos (cada estampa pode ser um item) e aviamentos.</p>')
     : (S.compras.length ? `<table class="t"><thead><tr><th>Data</th><th>Material</th><th>Loja</th><th class="r">Qtd</th><th class="r">Valor pago</th><th></th></tr></thead><tbody>
@@ -86,20 +86,21 @@ views.materiaisAfter = views.pedidosAfter;
 actions.matTab = (d) => { ui.matTab = d.t; render(); };
 function formMaterial(m) {
   const novo = !m;
-  m = m || { nome: '', tipo: 'tecido', unidade: 'm', custo: '', estoque: 0, minimo: 0, fornecedor: '' };
+  m = m || { nome: '', tipo: 'tecido', unidade: 'm', custo: '', estoque: 0, minimo: 0, fornecedor: '', foto: '' };
   openModal({
     title: novo ? 'Novo material' : 'Material',
-    body: `<div class="form-grid">${F.text('nome', 'Nome (ex.: Cetim floral rosa)', m.nome, 'required')}
+    body: `<div class="form-grid">${campoFoto(m.foto, m.nome, 'Foto da estampa / tecido')}${F.text('nome', 'Nome (ex.: Cetim floral rosa)', m.nome, 'required')}
       ${F.select('tipo', 'Tipo', [['tecido', 'Tecido (comprado por metro)'], ['aviamento', 'Aviamento (elástico, botão, linha…)']], m.tipo)}
       ${F.select('unidade', 'Vendido por', [['m', 'metro'], ['un', 'unidade'], ['cm', 'centímetro'], ['rolo', 'rolo'], ['pct', 'pacote']], m.unidade)}
       ${F.num('custo', 'Custo por unidade (R$)', m.custo, 'required min="0"')}${F.num('estoque', 'Quantidade em estoque', m.estoque)}${F.num('minimo', 'Avisar quando chegar em…', m.minimo, 'min="0"')}
       ${F.text('fornecedor', 'Onde compra', m.fornecedor)}</div>
       ${novo ? '' : '<p><button type="button" class="btn danger-o sm" data-act="excluirMaterial" data-id="' + m.id + '">Excluir material</button></p>'}`,
     onSubmit: (v) => {
-      const dados = { nome: v.nome.trim(), tipo: v.tipo, unidade: v.unidade, custo: parseFloat(v.custo) || 0, estoque: parseFloat(v.estoque) || 0, minimo: parseFloat(v.minimo) || 0, fornecedor: v.fornecedor };
+      const dados = { nome: v.nome.trim(), tipo: v.tipo, unidade: v.unidade, custo: parseFloat(v.custo) || 0, estoque: parseFloat(v.estoque) || 0, minimo: parseFloat(v.minimo) || 0, fornecedor: v.fornecedor, foto: v.foto || '' };
       if (novo) S.materiais.push({ id: nextId('material'), ...dados }); else Object.assign(m, dados);
       save(); toast('Material salvo.'); render();
     },
+    onOpen: (form) => ligarFoto(form),
   });
 }
 actions.novoMaterial = () => formMaterial(null);
@@ -141,16 +142,23 @@ actions.excluirCompra = (d) => confirmar('Excluir esta compra? O estoque será r
 // ================= PRODUTOS =================
 const custoLista = (p) => Calc.custoProduto(S, p).total;
 views.produtos = function () {
+  const vista = ui.prodVista || 'galeria';
   const q = norm(ui.busca);
   const lista = S.produtos.filter((p) => !q || norm(p.nome + p.categoria + p.codigo).includes(q)).sort((a, b) => (a.categoria || '').localeCompare(b.categoria || '') || a.nome.localeCompare(b.nome));
   return `<div class="page-head"><h1>Produtos</h1><button class="btn primary" data-act="novoProduto">+ Novo produto</button></div>
-  <div class="toolbar"><input class="search" id="busca" placeholder="Buscar produto ou categoria…" value="${esc(ui.busca)}"><span class="muted small">Os preços usam o tecido padrão e mudam sozinhos quando o preço de um material muda.</span></div>
-  ${lista.length ? `<table class="t"><thead><tr><th>Cód.</th><th>Produto</th><th>Categoria</th><th class="r">Custo</th><th class="r">Atacado</th><th class="r">Varejo</th><th class="r">Margem (at./var.)</th><th></th></tr></thead><tbody>
-  ${lista.map((p) => { const c = custoLista(p); return `<tr class="click" data-act="editarProduto" data-id="${p.id}"><td>${esc(p.codigo)}</td><td>${esc(p.nome)}</td><td>${esc(p.categoria)}</td><td class="r">${money(c)}</td>
+  <div class="toolbar"><div class="row-btn"><input class="search" id="busca" placeholder="Buscar produto ou categoria…" value="${esc(ui.busca)}">
+    <div class="chips"><button class="chip ${vista === 'galeria' ? 'on' : ''}" data-act="prodVista" data-v="galeria">Galeria</button><button class="chip ${vista === 'lista' ? 'on' : ''}" data-act="prodVista" data-v="lista">Lista</button></div></div>
+    <span class="muted small">Os preços usam o tecido padrão e mudam sozinhos quando o preço de um material muda.</span></div>
+  ${lista.length && vista === 'galeria' ? `<div class="galeria">${lista.map((p) => { const c = custoLista(p); return `<div class="gcard" tabindex="0" data-act="editarProduto" data-id="${p.id}">${thumb(p.foto, p.nome, 'xl')}
+    <b>${esc(p.nome)}</b><span class="muted small">${esc([p.codigo, p.categoria].filter(Boolean).join(' · '))}</span>
+    <div class="gp"><span>Atacado<b>${money(Calc.preco(c, p.margemAtacado))}</b></span><span>Varejo<b>${money(Calc.preco(c, p.margemVarejo))}</b></span></div></div>`; }).join('')}</div>` : ''}
+  ${lista.length && vista === 'lista' ? `<table class="t"><thead><tr><th></th><th>Cód.</th><th>Produto</th><th>Categoria</th><th class="r">Custo</th><th class="r">Atacado</th><th class="r">Varejo</th><th class="r">Margem (at./var.)</th><th></th></tr></thead><tbody>
+  ${lista.map((p) => { const c = custoLista(p); return `<tr class="click" data-act="editarProduto" data-id="${p.id}"><td class="th">${thumb(p.foto, p.nome)}</td><td>${esc(p.codigo)}</td><td>${esc(p.nome)}</td><td>${esc(p.categoria)}</td><td class="r">${money(c)}</td>
     <td class="r"><b>${money(Calc.preco(c, p.margemAtacado))}</b></td><td class="r"><b>${money(Calc.preco(c, p.margemVarejo))}</b></td><td class="r muted">${num(p.margemAtacado, 1)}% / ${num(p.margemVarejo, 1)}%</td>
     <td><button class="icon" data-act="duplicarProduto" data-id="${p.id}" title="Duplicar">⧉</button></td></tr>`; }).join('')}</tbody></table>`
-  : '<p class="empty big">Cadastre seus produtos para o programa calcular custo e preço.</p>'}`;
+  : ''}${lista.length ? '' : '<p class="empty big">Cadastre seus produtos para o programa calcular custo e preço.</p>'}`;
 };
+actions.prodVista = (d) => { ui.prodVista = d.v; render(); };
 views.produtosAfter = views.pedidosAfter;
 const linhaAviam = (a = { materialId: '', qtd: 1 }) => `<div class="aviam"><select name="av_mat">${[['', '— material —'], ...S.materiais.filter((m) => m.tipo === 'aviamento').map((m) => [m.id, `${m.nome} (${money(m.custo)}/${m.unidade})`])].map(([v, t]) => `<option value="${v}" ${String(v) === String(a.materialId) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
   <input name="av_qtd" type="number" step="any" min="0" value="${a.qtd}" title="Quantidade"><button type="button" class="icon" data-act="rmAviam">🗑</button></div>`;
@@ -161,7 +169,7 @@ function lerProdutoForm(form) {
   const f = new FormData(form);
   const mats = f.getAll('av_mat'), qtds = f.getAll('av_qtd');
   return {
-    nome: (f.get('nome') || '').trim(), codigo: f.get('codigo'), categoria: (f.get('categoria') || '').trim(),
+    foto: f.get('foto') || '', nome: (f.get('nome') || '').trim(), codigo: f.get('codigo'), categoria: (f.get('categoria') || '').trim(),
     tecidoId: f.get('tecidoId') ? Number(f.get('tecidoId')) : '', consumoTecido: parseFloat(f.get('consumoTecido')) || 0,
     aviamentos: mats.map((m, i) => ({ materialId: Number(m), qtd: parseFloat(qtds[i]) || 0 })).filter((a) => a.materialId),
     tempoMin: parseFloat(f.get('tempoMin')) || 0, margemAtacado: parseFloat(f.get('margemAtacado')) || 0, margemVarejo: parseFloat(f.get('margemVarejo')) || 0, obs: f.get('obs'),
@@ -169,14 +177,14 @@ function lerProdutoForm(form) {
 }
 function formProduto(p, copia) {
   const novo = !p || copia;
-  const base = p ? JSON.parse(JSON.stringify(p)) : { nome: '', codigo: '', categoria: '', tecidoId: '', consumoTecido: '', aviamentos: [], tempoMin: '', margemAtacado: S.config.margemAtacado, margemVarejo: S.config.margemVarejo, obs: '' };
+  const base = p ? JSON.parse(JSON.stringify(p)) : { foto: '', nome: '', codigo: '', categoria: '', tecidoId: '', consumoTecido: '', aviamentos: [], tempoMin: '', margemAtacado: S.config.margemAtacado, margemVarejo: S.config.margemVarejo, obs: '' };
   if (copia) { base.nome += ' (cópia)'; base.codigo = ''; }
   const cats = [...new Set(S.produtos.map((x) => x.categoria).filter(Boolean))];
   const hora = Calc.valorHora(S.config);
   openModal({
     title: novo ? (copia ? 'Duplicar produto' : 'Novo produto') : 'Produto', wide: true,
     body: `<div class="cols"><div>
-      <div class="form-grid">${F.text('nome', 'Nome do produto', base.nome, 'required')}${F.text('codigo', 'Código', base.codigo)}
+      <div class="form-grid">${campoFoto(base.foto, base.nome)}${F.text('nome', 'Nome do produto', base.nome, 'required')}${F.text('codigo', 'Código', base.codigo)}
       <label>Categoria<input name="categoria" list="cats" value="${esc(base.categoria)}"><datalist id="cats">${cats.map((c) => `<option value="${esc(c)}">`).join('')}</datalist></label>
       ${F.select('tecidoId', 'Tecido padrão', [['', '— nenhum —'], ...S.materiais.filter((m) => m.tipo === 'tecido').map((m) => [m.id, `${m.nome} (${money(m.custo)}/${m.unidade})`])], base.tecidoId)}
       ${F.num('consumoTecido', 'Quanto de tecido gasta (metros)', base.consumoTecido, 'min="0"')}${F.num('tempoMin', 'Tempo de produção (minutos)', base.tempoMin, 'min="0"')}</div>
@@ -194,7 +202,7 @@ function formProduto(p, copia) {
           <div class="price"><span>Atacado</span><b>${money(Calc.preco(c.total, d.margemAtacado))}</b><small>lucro ${money(Calc.preco(c.total, d.margemAtacado) - c.total)}</small></div>
           <div class="price"><span>Varejo</span><b>${money(Calc.preco(c.total, d.margemVarejo))}</b><small>lucro ${money(Calc.preco(c.total, d.margemVarejo) - c.total)}</small></div>`;
       };
-      form.addEventListener('input', upd); upd();
+      form.addEventListener('input', upd); upd(); ligarFoto(form);
     },
     onSubmit: (v, form) => {
       const dados = lerProdutoForm(form);

@@ -35,6 +35,7 @@ const opcoesTecidos = () => [['', 'tecido padrão do produto'], ...S.materiais.f
 function linhaItem(i, idx) {
   const p = byId(S.produtos, i.produtoId);
   return `<tr data-idx="${idx}">
+    <td class="it-th th">${thumb(p && p.foto, p && p.nome)}</td>
     <td>${F.select('produtoId', '', opcoesProdutos(), i.produtoId, 'class="it-prod"').replace('<label>', '<label class="bare">')}</td>
     <td>${F.select('tecidoId', '', opcoesTecidos(), i.tecidoId || '', 'class="it-tec"').replace('<label>', '<label class="bare">')}</td>
     <td><input class="it-desc" placeholder="cor, tamanho, detalhes" value="${esc(i.descricao || '')}"></td>
@@ -68,7 +69,7 @@ views.pedido = function () {
     ${F.select('status', 'Situação', STATUS, d.status)}
   </div>
   <section class="card"><h3>Itens</h3>
-    <table class="t items"><thead><tr><th>Produto</th><th>Tecido / estampa</th><th>Detalhes</th><th>Qtd</th><th>Preço</th><th>Valor un.</th><th class="r">Subtotal</th><th></th></tr></thead>
+    <table class="t items"><thead><tr><th></th><th>Produto</th><th>Tecido / estampa</th><th>Detalhes</th><th>Qtd</th><th>Preço</th><th>Valor un.</th><th class="r">Subtotal</th><th></th></tr></thead>
     <tbody id="itens">${d.itens.map(linhaItem).join('')}</tbody></table>
     <button type="button" class="btn sm" data-act="addItem">+ Adicionar item</button>
     <p class="muted small" id="dica"></p>
@@ -127,6 +128,7 @@ function pedidoInput(e) {
   lerPedidoDaTela();
   if (tr) {
     const it = ui.draft.itens[tr.dataset.idx];
+    if (e.target.matches('.it-prod')) { const pr = byId(S.produtos, it.produtoId); $('.it-th', tr).innerHTML = thumb(pr && pr.foto, pr && pr.nome); }
     if (e.target.matches('.it-prod,.it-tec,.it-tipo')) { it.auto = true; recalcularLinha(tr, true); lerPedidoDaTela(); }
     if (e.target.matches('.it-preco')) it.auto = false;
   }
@@ -178,9 +180,9 @@ actions.imprimirPedido = async () => {
     <h2>${d.status === 'orcamento' ? 'Orçamento' : 'Pedido'} #${d.numero}</h2>
     <p><b>Cliente:</b> ${esc(c.nome || '')}${c.telefone ? ' · ' + esc(c.telefone) : ''}<br>${c.endereco ? '<b>Endereço:</b> ' + esc(c.endereco) + '<br>' : ''}
     <b>Data:</b> ${dataBR(d.data)}${d.entrega ? ' · <b>Entrega prevista:</b> ' + dataBR(d.entrega) : ''}</p>
-    <table><thead><tr><th>Produto</th><th>Detalhes</th><th>Qtd</th><th>Valor un.</th><th>Total</th></tr></thead><tbody>
+    <table><thead><tr><th></th><th>Produto</th><th>Detalhes</th><th>Qtd</th><th>Valor un.</th><th>Total</th></tr></thead><tbody>
     ${d.itens.map((i) => { const p = byId(S.produtos, i.produtoId) || {}; const t = byId(S.materiais, i.tecidoId);
-      return `<tr><td>${esc(p.nome)}</td><td>${esc([t && t.nome, i.descricao].filter(Boolean).join(' · '))}</td><td>${i.qtd}</td><td>${money(i.preco)}</td><td>${money(i.qtd * i.preco)}</td></tr>`; }).join('')}
+      return `<tr><td>${p.foto ? `<img src="${esc(p.foto)}" alt="">` : ''}</td><td>${esc(p.nome)}</td><td>${esc([t && t.nome, i.descricao].filter(Boolean).join(' · '))}</td><td>${i.qtd}</td><td>${money(i.preco)}</td><td>${money(i.qtd * i.preco)}</td></tr>`; }).join('')}
     </tbody></table>
     <p class="r">${d.desconto ? 'Desconto: ' + money(d.desconto) + '<br>' : ''}${d.frete ? 'Frete: ' + money(d.frete) + '<br>' : ''}<b>Total: ${money(Calc.totalPedido(d))}</b><br>
     Pago: ${money(Calc.pagoPedido(d))} · Falta: ${money(Math.max(0, Calc.totalPedido(d) - Calc.pagoPedido(d)))}</p>

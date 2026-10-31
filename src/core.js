@@ -79,6 +79,46 @@ function toast(msg) {
   clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 2600);
 }
 
+// ---------- fotos ----------
+// Reduz a foto para no máx. 480 px (JPEG) para o arquivo de dados não crescer demais.
+function redimensionar(file, max = 480) {
+  return new Promise((resolve, reject) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
+      const g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.78));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('imagem')); };
+    img.src = url;
+  });
+}
+// Miniatura da foto; sem foto mostra a inicial do nome.
+const thumb = (foto, nome = '', tam = '') => foto
+  ? `<span class="thumb ${tam}"><img src="${esc(foto)}" alt=""></span>`
+  : `<span class="thumb ph ${tam}">${esc((String(nome).trim().charAt(0) || '?').toUpperCase())}</span>`;
+const campoFoto = (foto, nome, rotulo = 'Foto do produto') => `<div class="foto-campo"><div class="foto-prev">${thumb(foto, nome, 'lg')}</div>
+  <div class="foto-ctl"><b>${rotulo}</b><input type="hidden" name="foto" value="${esc(foto || '')}">
+  <label class="btn sm filebtn">📷 Escolher foto<input type="file" accept="image/*" hidden id="fotoArquivo"></label><button type="button" class="btn sm" data-act="rmFoto">Remover</button>
+  <small class="muted">Também dá para arrastar a imagem para esta janela ou colar com Ctrl+V.</small></div></div>`;
+function ligarFoto(form) {
+  const hid = $('[name=foto]', form), prev = $('.foto-prev', form);
+  const nome = () => (form.nome ? form.nome.value : '');
+  const por = (v) => { hid.value = v; prev.innerHTML = thumb(v, nome(), 'lg'); };
+  const aceitar = async (file) => {
+    if (!file || !file.type.startsWith('image/')) return toast('Escolha um arquivo de imagem (JPG ou PNG).');
+    try { por(await redimensionar(file)); } catch (e) { toast('Não consegui abrir essa imagem. Tente JPG ou PNG.'); }
+  };
+  $('input[type=file]', form).addEventListener('change', (e) => { aceitar(e.target.files[0]); e.target.value = ''; });
+  form.addEventListener('paste', (e) => { const f = [...((e.clipboardData && e.clipboardData.files) || [])][0]; if (f) { e.preventDefault(); aceitar(f); } });
+  form.addEventListener('dragover', (e) => e.preventDefault());
+  form.addEventListener('drop', (e) => { e.preventDefault(); aceitar(e.dataTransfer.files[0]); });
+  form.addEventListener('click', (e) => { if (e.target.closest('[data-act=rmFoto]')) por(''); });
+  form.addEventListener('input', (e) => { if (e.target.name === 'nome' && !hid.value) prev.innerHTML = thumb('', nome(), 'lg'); });
+}
+
 // ---------- formulários ----------
 const F = {
   text: (n, l, v = '', a = '') => `<label>${l}<input name="${n}" value="${esc(v)}" ${a}></label>`,

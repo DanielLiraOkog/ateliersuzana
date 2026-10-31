@@ -1,0 +1,25 @@
+{
+  "name": "atelier-suzana-lira",
+  "productName": "Atelier Suzana Lira",
+  "version": "0.1.0",
+  "description": "Gestão do Atelier Suzana Lira: produtos, materiais, pedidos e finanças",
+  "main": "main.js",
+  "author": "Atelier Suzana Lira",
+  "scripts": {
+    "start": "electron .",
+    "dev": "node dev-server.js",
+    "test": "node tests/calc.test.js",
+    "dist": "electron-builder --win --x64"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "br.com.atelier.suzanalira",
+    "productName": "Atelier Suzana Lira",
+    "files": ["main.js", "preload.js", "src/**/*", "build/**/*"],
+    "win": { "target": ["nsis"], "icon": "build/icon.ico" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "language": "1046" }
+  }
+}

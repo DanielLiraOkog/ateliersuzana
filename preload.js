@@ -7,4 +7,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openText: (ext) => ipcRenderer.invoke('file:open-text', ext),
   savePdf: (name) => ipcRenderer.invoke('pdf:save', name),
   dataDir: () => ipcRenderer.invoke('app:data-dir'),
+  getSettings: () => ipcRenderer.invoke('settings:get'),
+  setSettings: (p) => ipcRenderer.invoke('settings:set', p),
+  chooseBackupDir: () => ipcRenderer.invoke('backup:choose-dir'),
+  backupNow: () => ipcRenderer.invoke('backup:now'),
+  listBackups: () => ipcRenderer.invoke('backup:list'),
+  readBackup: (name) => ipcRenderer.invoke('backup:read', name),
+  safetyCopy: () => ipcRenderer.invoke('backup:safety'),
+  openBackupFolder: () => ipcRenderer.invoke('backup:open-folder'),
+  setIcon: (dataUrl) => ipcRenderer.invoke('app:set-icon', dataUrl),
 });

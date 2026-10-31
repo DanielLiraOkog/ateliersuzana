@@ -40,9 +40,14 @@ actions.excluirDespesa = (d) => {
 };
 
 // ================= CONFIGURAÇÕES =================
+const FREQ = [['sessao', 'Sempre que abrir e fechar o programa'], ['1h', 'A cada 1 hora'], ['6h', 'A cada 6 horas'], ['diario', 'Uma vez por dia'], ['semanal', 'Uma vez por semana'], ['desligado', 'Desligado (não recomendado)']];
+const dataHora = (ms) => (ms ? new Date(ms).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'ainda não houve');
 views.config = function () {
   const c = S.config;
   return `<div class="page-head"><h1>Configurações</h1></div>
+  <section class="card"><h3>Logo do ateliê</h3><div class="foto-campo"><div class="logo-prev">${c.logo ? `<img src="${esc(c.logo)}" alt="">` : '<span class="muted small">sem logo</span>'}</div>
+    <div class="foto-ctl"><label class="btn sm filebtn">Escolher logo<input type="file" accept="image/*" hidden id="logoArquivo"></label><button type="button" class="btn sm" data-act="rmLogo">Remover logo</button>
+    <small class="muted">Aparece no menu, nos pedidos impressos e no ícone da janela. PNG com fundo transparente fica melhor. O atalho da área de trabalho continua com o ícone original.</small></div></div></section>
   <form id="cfgForm"><section class="card"><h3>Seu ateliê</h3><div class="form-grid">${F.text('loja', 'Nome do ateliê', c.loja)}${F.text('telefone', 'Telefone / contato (aparece no pedido impresso)', c.telefone)}${F.text('rodapePedido', 'Mensagem no rodapé do pedido', c.rodapePedido)}</div></section>
   <section class="card"><h3>Seu trabalho (base do cálculo de preço)</h3>
     <div class="form-grid">${F.num('salario', 'Quanto quer ganhar por mês (R$)', c.salario, 'min="0"')}${F.num('dias', 'Dias trabalhados no mês', c.dias, 'min="1" max="31"')}${F.num('horas', 'Horas trabalhadas por dia', c.horas, 'min="1" max="24"')}
@@ -50,25 +55,66 @@ views.config = function () {
     <p class="muted" id="horaInfo"></p>
     <p class="muted small">Ao mudar estes valores, o custo e o preço de todos os produtos são recalculados. Pedidos já lançados mantêm o preço combinado.</p></section>
   <button class="btn primary">Salvar configurações</button></form>
-  <section class="card" style="margin-top:18px"><h3>Cópia de segurança</h3>
-    <p>Seus dados ficam salvos neste computador em <code id="dataDir"></code>. O programa também guarda uma cópia automática por dia (últimos 30 dias) na pasta <i>backups</i>.</p>
-    <div class="row-btn"><button class="btn" data-act="exportar">Salvar cópia (pen drive / nuvem)</button><button class="btn danger-o" data-act="restaurar">Restaurar de uma cópia</button></div></section>`;
+  <section class="card" style="margin-top:18px" id="bkCard"><h3>Cópia de segurança automática</h3><p class="muted">Carregando…</p></section>
+  <section class="card"><h3>Trocar de computador ou restaurar dados</h3>
+    <ol class="passos"><li><b>No computador antigo:</b> clique em <i>Salvar cópia em arquivo</i> e leve o arquivo (pen drive, Drive ou WhatsApp). Se as cópias automáticas já vão para um pen drive ou para a nuvem, esse passo é opcional.</li>
+    <li><b>No computador novo:</b> instale o programa, abra e clique em <i>Restaurar de um arquivo</i>, ou escolha uma cópia automática na lista abaixo.</li></ol>
+    <div class="row-btn"><button class="btn" data-act="exportar">Salvar cópia em arquivo…</button><button class="btn danger-o" data-act="restaurar">Restaurar de um arquivo…</button></div>
+    <h3 style="margin-top:18px">Cópias automáticas encontradas</h3><div id="bkLista"><p class="muted">Carregando…</p></div>
+    <p class="muted small">Ao restaurar, os dados atuais são guardados antes numa cópia chamada <i>antes-de-restaurar</i>, na mesma pasta.</p></section>`;
 };
+function desenharBackup(c) {
+  ui.bk = c;
+  const box = $('#bkCard'); if (!box) return;
+  box.innerHTML = `<h3>Cópia de segurança automática</h3>
+    <div class="form-grid"><label>Quando fazer a cópia<select id="bkFreq">${FREQ.map(([v, t]) => `<option value="${v}" ${v === c.frequencia ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    <label>Quantas cópias guardar<input id="bkManter" type="number" min="1" max="365" value="${c.manter}"></label></div>
+    <p><b>Pasta das cópias:</b> <code>${esc(c.backupDir)}</code></p>
+    <div class="row-btn"><button class="btn" data-act="bkEscolher">Escolher pasta…</button><button class="btn" data-act="bkAbrir">Abrir pasta</button><button class="btn primary" data-act="bkAgora">Fazer cópia agora</button></div>
+    <p class="${c.ultimoErro ? 'bad' : 'muted'}" style="margin-bottom:0">${c.ultimoErro ? '⚠ A última tentativa falhou: ' + esc(c.ultimoErro) + '. Confira se a pasta ou o pen drive está disponível.' : 'Última cópia: ' + dataHora(c.ultimo)}</p>
+    <p class="muted small">Só é criada uma cópia nova quando houve alteração nos dados. Num computador emprestado, escolha como pasta um pen drive ou a pasta do Google Drive ou OneDrive, para os dados saírem junto com ela.</p>`;
+  $('#bkFreq').onchange = async (e) => desenharBackup(await api.setSettings({ frequencia: e.target.value }));
+  $('#bkManter').onchange = async (e) => desenharBackup(await api.setSettings({ manter: e.target.value }));
+}
+async function carregarCopias() {
+  const box = $('#bkLista'); if (!box) return;
+  const l = await api.listBackups();
+  box.innerHTML = l.length ? `<table class="t"><tbody>${l.map((f) => `<tr><td>${dataHora(f.mtime)}</td><td class="muted small">${esc(f.name)}</td><td class="r muted small">${num(f.size / 1024, 0)} KB</td><td class="r"><button class="btn sm" data-act="bkRestaurar" data-name="${esc(f.name)}">Restaurar esta</button></td></tr>`).join('')}</tbody></table>`
+    : '<p class="empty">Nenhuma cópia na pasta escolhida ainda.</p>';
+}
 views.configAfter = function () {
   const f = $('#cfgForm');
   const info = () => { const v = (n) => parseFloat(f[n].value) || 0; $('#horaInfo').textContent = `Valor da sua hora: ${money(Calc.valorHora({ salario: v('salario'), dias: v('dias'), horas: v('horas') }))}`; };
   f.addEventListener('input', info); info();
-  api.dataDir().then((p) => { $('#dataDir').textContent = p; });
   f.addEventListener('submit', (e) => {
     e.preventDefault();
     const o = formData(f), n = (k) => parseFloat(o[k]) || 0;
     Object.assign(S.config, { loja: o.loja.trim() || 'Meu Ateliê', telefone: o.telefone, rodapePedido: o.rodapePedido, salario: n('salario'), dias: n('dias') || 22, horas: n('horas') || 8, custoFixo: n('custoFixo'), margemAtacado: n('margemAtacado'), margemVarejo: n('margemVarejo') });
     save(); toast('Configurações salvas.'); render();
   });
+  $('#logoArquivo').addEventListener('change', async (e) => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file || !file.type.startsWith('image/')) return toast('Escolha um arquivo de imagem (PNG ou JPG).');
+    try { S.config.logo = await redimensionar(file, 320, true); save(); aplicarLogo(); toast('Logo atualizada.'); render(); } catch (err) { toast('Não consegui abrir essa imagem. Tente PNG ou JPG.'); }
+  });
+  api.getSettings().then(desenharBackup); carregarCopias();
 };
+actions.rmLogo = () => { delete S.config.logo; save(); aplicarLogo(); toast('Logo removida.'); render(); };
+actions.bkEscolher = async () => { const d = await api.chooseBackupDir(); if (d) { desenharBackup(await api.setSettings({ backupDir: d })); carregarCopias(); toast('Pasta alterada.'); } };
+actions.bkAbrir = () => api.openBackupFolder();
+actions.bkAgora = async () => { const r = await api.backupNow(); if (r.config) desenharBackup(r.config); toast(r.ok ? 'Cópia feita.' : 'Não foi possível: ' + (r.erro || 'erro')); carregarCopias(); };
 actions.exportar = async () => { if (await api.exportBackup()) toast('Cópia salva.'); };
-actions.restaurar = async () => {
-  const d = await api.importBackup(); if (!d) return;
-  if (!d.pedidos || !d.config) return toast('Este arquivo não parece ser um backup do programa.');
-  confirmar('Substituir TODOS os dados atuais por esta cópia?', () => { S = migrate(d); save(); toast('Dados restaurados.'); render(); }, 'Restaurar');
-};
+
+// Troca todos os dados pelos de uma cópia, guardando antes uma cópia dos atuais.
+function aplicarRestauracao(d) {
+  if (!d || !d.config || !Array.isArray(d.pedidos)) return toast('Este arquivo não parece ser uma cópia do programa.');
+  confirmar('Substituir TODOS os dados atuais por esta cópia? Os dados de agora ficam guardados numa cópia "antes-de-restaurar".', async () => {
+    await api.safetyCopy();
+    S = migrate(d); S.config.bemVinda = true; ui.draft = null; await save(); aplicarLogo();
+    toast('Dados restaurados.'); go('painel'); carregarCopias();
+  }, 'Restaurar');
+}
+actions.restaurar = async () => aplicarRestauracao(await api.importBackup());
+actions.bkRestaurar = async (d) => aplicarRestauracao(await api.readBackup(d.name));
+actions.bvArquivo = () => { fecharModais(); actions.restaurar(); };
+actions.bvPasta = () => { fecharModais(); go('config'); };

@@ -176,7 +176,7 @@ actions.imprimirPedido = async () => {
   lerPedidoDaTela();
   const d = ui.draft, c = byId(S.clientes, d.clienteId) || {};
   const pa = $('#printArea');
-  pa.innerHTML = `<h1>${esc(S.config.loja)}</h1>${S.config.telefone ? `<p>${esc(S.config.telefone)}</p>` : ''}
+  pa.innerHTML = `${S.config.logo ? `<img class="logo-print" src="${esc(S.config.logo)}" alt="">` : ''}<h1>${esc(S.config.loja)}</h1>${S.config.telefone ? `<p>${esc(S.config.telefone)}</p>` : ''}
     <h2>${d.status === 'orcamento' ? 'Orçamento' : 'Pedido'} #${d.numero}</h2>
     <p><b>Cliente:</b> ${esc(c.nome || '')}${c.telefone ? ' · ' + esc(c.telefone) : ''}<br>${c.endereco ? '<b>Endereço:</b> ' + esc(c.endereco) + '<br>' : ''}
     <b>Data:</b> ${dataBR(d.data)}${d.entrega ? ' · <b>Entrega prevista:</b> ' + dataBR(d.entrega) : ''}</p>

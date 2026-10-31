@@ -1,6 +1,12 @@
 const pedidosValidos = () => S.pedidos.filter((p) => !['orcamento', 'cancelado'].includes(p.status));
 const saldoPedido = (p) => Calc.r2(Calc.totalPedido(p) - Calc.pagoPedido(p));
 
+function avisosBackup() {
+  const c = ui.bk; if (!c) return [];
+  if (c.ultimoErro) return [{ cls: 'bad', t: '⚠ A cópia de segurança falhou. Confira a pasta escolhida em Configurações.' }];
+  if (c.frequencia === 'desligado') return [{ cls: 'warn', t: 'A cópia de segurança automática está desligada.' }];
+  return [];
+}
 views.painel = function () {
   const m = ym(new Date());
   const doMes = pedidosValidos().filter((p) => p.data.startsWith(m));
@@ -51,7 +57,8 @@ views.painel = function () {
       <ul class="alerts">
         ${orcamentos.length ? `<li><a data-act="filtrarPedidos" data-f="orcamento">${orcamentos.length} orçamento(s) aguardando resposta</a></li>` : ''}
         ${baixo.map((x) => `<li class="bad"><a data-act="go" data-view="materiais">Estoque baixo: ${esc(x.nome)} (${num(x.estoque)} ${x.unidade})</a></li>`).join('')}
-        ${!orcamentos.length && !baixo.length ? '<li class="muted">Tudo em ordem por aqui.</li>' : ''}
+        ${avisosBackup().map((a) => `<li class="${a.cls}"><a data-act="go" data-view="config">${a.t}</a></li>`).join('')}
+        ${!orcamentos.length && !baixo.length && !avisosBackup().length ? '<li class="muted">Tudo em ordem por aqui.</li>' : ''}
       </ul>
     </section>
     <section class="card"><h3>Atalhos</h3>

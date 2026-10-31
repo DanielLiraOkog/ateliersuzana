@@ -1,30 +1,59 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, nativeImage } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
 const dataDir = path.join(app.getPath('documents'), 'Atelier Suzana Lira');
 const dataFile = path.join(dataDir, 'dados.json');
-const backupDir = path.join(dataDir, 'backups');
-
-function ensureDirs() {
-  fs.mkdirSync(backupDir, { recursive: true });
-}
-
-// Uma cópia por dia, guarda as últimas 30.
-function dailyBackup() {
-  if (!fs.existsSync(dataFile)) return;
-  const name = `dados-${new Date().toISOString().slice(0, 10)}.json`;
-  const dest = path.join(backupDir, name);
-  if (!fs.existsSync(dest)) fs.copyFileSync(dataFile, dest);
-  const files = fs.readdirSync(backupDir).filter((f) => f.startsWith('dados-')).sort();
-  files.slice(0, Math.max(0, files.length - 30)).forEach((f) => fs.unlinkSync(path.join(backupDir, f)));
-}
 
 function atomicWrite(file, text) {
   const tmp = file + '.tmp';
   fs.writeFileSync(tmp, text);
   fs.renameSync(tmp, file);
 }
+
+// ---------- cópias de segurança automáticas ----------
+// As preferências ficam num arquivo local (não vão junto com os dados, porque a pasta é própria de cada computador).
+const settingsFile = path.join(dataDir, 'config-app.json');
+const INTERVALOS = { '1h': 3600e3, '6h': 6 * 3600e3, diario: 86400e3, semanal: 7 * 86400e3 };
+let cfg;
+function lerCfg() {
+  const base = { backupDir: path.join(dataDir, 'backups'), frequencia: 'diario', manter: 30, ultimo: 0, ultimoErro: null };
+  try { return { ...base, ...JSON.parse(fs.readFileSync(settingsFile, 'utf8')) }; } catch { return base; }
+}
+function gravarCfg() { fs.mkdirSync(dataDir, { recursive: true }); atomicWrite(settingsFile, JSON.stringify(cfg, null, 2)); }
+const publico = () => ({ ...cfg, dataDir });
+function stamp() {
+  const d = new Date(), p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
+}
+function podar(prefixo, manter) {
+  const arqs = fs.readdirSync(cfg.backupDir).filter((f) => f.startsWith(prefixo) && f.endsWith('.json')).sort();
+  arqs.slice(0, Math.max(0, arqs.length - manter)).forEach((f) => { try { fs.unlinkSync(path.join(cfg.backupDir, f)); } catch {} });
+}
+// Copia dados.json para a pasta escolhida. Sem `forcar`, só copia se houve alteração desde a última cópia.
+function fazerBackup(forcar = false) {
+  try {
+    if (!fs.existsSync(dataFile)) return { ok: false, erro: 'Ainda não há dados para copiar.' };
+    if (!forcar && fs.statSync(dataFile).mtimeMs <= cfg.ultimo) return { ok: true, pulou: true };
+    fs.mkdirSync(cfg.backupDir, { recursive: true });
+    const dest = path.join(cfg.backupDir, `dados-${stamp()}.json`);
+    fs.copyFileSync(dataFile, dest);
+    podar('dados-', cfg.manter);
+    cfg.ultimo = Date.now(); cfg.ultimoErro = null; gravarCfg();
+    return { ok: true, arquivo: dest };
+  } catch (e) {
+    cfg.ultimoErro = `${e.code || ''} ${e.message}`.trim();
+    try { gravarCfg(); } catch {}
+    return { ok: false, erro: cfg.ultimoErro };
+  }
+}
+const backupDevido = () => cfg.frequencia === 'sessao' || (!!INTERVALOS[cfg.frequencia] && Date.now() - cfg.ultimo >= INTERVALOS[cfg.frequencia]);
+let timer;
+function agendar() {
+  clearInterval(timer);
+  if (INTERVALOS[cfg.frequencia]) timer = setInterval(() => { if (backupDevido()) fazerBackup(); }, 5 * 60e3);
+}
+
 
 let win;
 function createWindow() {
@@ -71,10 +100,49 @@ ipcMain.handle('pdf:save', async (_e, suggested) => {
   return true;
 });
 ipcMain.handle('app:data-dir', () => dataDir);
+ipcMain.handle('settings:get', () => publico());
+ipcMain.handle('settings:set', (_e, p) => {
+  if (['desligado', 'sessao', '1h', '6h', 'diario', 'semanal'].includes(p.frequencia)) cfg.frequencia = p.frequencia;
+  if (p.backupDir) cfg.backupDir = String(p.backupDir);
+  if (p.manter !== undefined) cfg.manter = Math.max(1, Math.min(365, parseInt(p.manter, 10) || 30));
+  gravarCfg(); agendar();
+  return publico();
+});
+ipcMain.handle('backup:choose-dir', async () => {
+  const r = await dialog.showOpenDialog(win, { title: 'Escolher a pasta das cópias de segurança', properties: ['openDirectory', 'createDirectory'] });
+  return r.canceled ? null : r.filePaths[0];
+});
+ipcMain.handle('backup:now', () => ({ ...fazerBackup(true), config: publico() }));
+ipcMain.handle('backup:list', () => {
+  try {
+    return fs.readdirSync(cfg.backupDir).filter((f) => f.endsWith('.json')).map((f) => { const s = fs.statSync(path.join(cfg.backupDir, f)); return { name: f, size: s.size, mtime: s.mtimeMs }; })
+      .sort((a, b) => b.mtime - a.mtime).slice(0, 100);
+  } catch { return []; }
+});
+ipcMain.handle('backup:read', (_e, name) => JSON.parse(fs.readFileSync(path.join(cfg.backupDir, path.basename(name)), 'utf8')));
+// Guarda os dados atuais antes de uma restauração (as 5 últimas ficam).
+ipcMain.handle('backup:safety', () => {
+  if (!fs.existsSync(dataFile)) return false;
+  fs.mkdirSync(cfg.backupDir, { recursive: true });
+  fs.copyFileSync(dataFile, path.join(cfg.backupDir, `antes-de-restaurar-${stamp()}.json`));
+  podar('antes-de-restaurar-', 5);
+  return true;
+});
+ipcMain.handle('backup:open-folder', () => { fs.mkdirSync(cfg.backupDir, { recursive: true }); return shell.openPath(cfg.backupDir); });
+// Ícone da janela/barra de tarefas: a logo dela, ou o ícone padrão.
+ipcMain.handle('app:set-icon', (_e, dataUrl) => {
+  const img = dataUrl ? nativeImage.createFromDataURL(dataUrl) : nativeImage.createFromPath(path.join(__dirname, 'build', 'icon.png'));
+  if (!img.isEmpty() && win) win.setIcon(img);
+  return true;
+});
+
 
 app.whenReady().then(() => {
-  ensureDirs();
-  dailyBackup();
+  fs.mkdirSync(dataDir, { recursive: true });
+  cfg = lerCfg(); gravarCfg();
+  if (backupDevido()) fazerBackup();
+  agendar();
   createWindow();
 });
+app.on('before-quit', () => { if (cfg && cfg.frequencia === 'sessao') fazerBackup(); });
 app.on('window-all-closed', () => app.quit());

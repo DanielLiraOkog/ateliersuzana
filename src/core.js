@@ -7,6 +7,10 @@ const api = window.electronAPI || {
   openText: (ext) => pickFile('.' + ext),
   savePdf: async () => { window.print(); return true; },
   dataDir: async () => '(modo navegador)',
+  getSettings: async () => ({ backupDir: '(modo navegador)', frequencia: 'diario', manter: 30, ultimo: 0, ultimoErro: null, dataDir: '(modo navegador)' }),
+  setSettings: async (p) => ({ backupDir: '(modo navegador)', frequencia: p.frequencia || 'diario', manter: p.manter || 30, ultimo: 0, ultimoErro: null }),
+  chooseBackupDir: async () => null, backupNow: async () => ({ ok: false, erro: 'Disponível só no programa instalado.' }),
+  listBackups: async () => [], readBackup: async () => null, safetyCopy: async () => false, openBackupFolder: async () => false, setIcon: async () => true,
 };
 function download(name, text, type) {
   const a = document.createElement('a');
@@ -81,15 +85,15 @@ function toast(msg) {
 
 // ---------- fotos ----------
 // Reduz a foto para no máx. 640 px (JPEG) para o arquivo de dados não crescer demais.
-function redimensionar(file, max = 640) {
+function redimensionar(file, max = 640, png = false) {
   return new Promise((resolve, reject) => {
     const img = new Image(), url = URL.createObjectURL(file);
     img.onload = () => {
       const k = Math.min(1, max / Math.max(img.width, img.height));
       const c = document.createElement('canvas');
       c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k));
-      const g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
-      URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.78));
+      const g = c.getContext('2d'); if (!png) { g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); } g.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); resolve(png ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.78));
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('imagem')); };
     img.src = url;
@@ -167,8 +171,11 @@ document.addEventListener('click', (e) => {
 });
 
 const views = {};
+const aplicarLogo = () => api.setIcon(S.config.logo || '');
 function render() {
   $('#brandName').textContent = S.config.loja;
+  const lg = $('.brand .logo'), logo = S.config.logo;
+  lg.classList.toggle('img', !!logo); lg.innerHTML = logo ? `<img src="${esc(logo)}" alt="">` : '✂';
   document.title = S.config.loja;
   $$('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.view === ui.view));
   const v = views[ui.view];

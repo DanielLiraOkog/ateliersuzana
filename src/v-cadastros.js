@@ -12,7 +12,7 @@ function formCliente(c, depois) {
     onSubmit: (v) => {
       const dados = { nome: v.nome.trim(), telefone: v.telefone, endereco: v.endereco, cpf: v.cpf, obs: v.obs };
       if (novo) { c = { id: nextId('cliente'), ...dados }; S.clientes.push(c); } else Object.assign(c, dados);
-      save(); toast('Cliente salvo.'); if (depois) depois(c); else render();
+      save(); toast('Pronto! Cliente salvo.'); if (depois) depois(c); else render();
     },
   });
 }
@@ -20,17 +20,17 @@ views.clientes = function () {
   const q = norm(ui.busca);
   const lista = S.clientes.filter((c) => !q || norm(c.nome + c.telefone).includes(q)).sort((a, b) => a.nome.localeCompare(b.nome));
   return `<div class="page-head"><h1>Clientes</h1><div class="row-btn"><button class="btn" data-act="importarClientes">Importar da planilha (CSV)</button><button class="btn primary" data-act="novoCliente">+ Novo cliente</button></div></div>
-  <div class="toolbar"><input class="search" id="busca" placeholder="Buscar cliente…" value="${esc(ui.busca)}"></div>
+  <div class="toolbar"><input class="search" id="busca" placeholder="Buscar cliente…" value="${esc(ui.busca)}" aria-label="Buscar cliente"></div>
   ${lista.length ? `<table class="t"><thead><tr><th>Nome</th><th>Telefone</th><th>Endereço</th><th class="r">Pedidos</th><th class="r">Total comprado</th></tr></thead><tbody>
-  ${lista.map((c) => { const ps = pedidosValidos().filter((p) => p.clienteId === c.id); return `<tr class="click" data-act="editarCliente" data-id="${c.id}"><td>${esc(c.nome)}</td><td>${esc(c.telefone)}</td><td class="trunc">${esc(c.endereco)}</td><td class="r">${ps.length}</td><td class="r">${money(ps.reduce((s, p) => s + Calc.totalPedido(p), 0))}</td></tr>`; }).join('')}
-  </tbody></table>` : '<p class="empty big">Nenhum cliente cadastrado.</p>'}`;
+  ${lista.map((c) => { const ps = pedidosValidos().filter((p) => p.clienteId === c.id); return `<tr class="click" tabindex="0" data-act="editarCliente" data-id="${c.id}"><td>${esc(c.nome)}</td><td>${esc(c.telefone)}</td><td class="trunc">${esc(c.endereco)}</td><td class="r">${ps.length}</td><td class="r">${money(ps.reduce((s, p) => s + Calc.totalPedido(p), 0))}</td></tr>`; }).join('')}
+  </tbody></table>` : (S.clientes.length ? vazio('Ninguém com esse nome', 'Confira a busca.') : vazio('Ninguém por aqui ainda', 'Cadastre quem compra de você e lance pedidos bem mais rápido.', 'novoCliente', '+ Cadastrar o primeiro cliente'))}`;
 };
 views.clientesAfter = views.pedidosAfter;
 actions.novoCliente = () => formCliente(null);
 actions.editarCliente = (d) => formCliente(byId(S.clientes, d.id));
 actions.excluirCliente = (d) => {
   if (S.pedidos.some((p) => p.clienteId === Number(d.id))) return toast('Este cliente tem pedidos e não pode ser excluído.');
-  confirmar('Excluir este cliente?', () => { S.clientes = S.clientes.filter((c) => c.id !== Number(d.id)); save(); $$('.overlay').forEach((o) => o.remove()); render(); });
+  confirmar('Excluir este cliente? Isso não pode ser desfeito.', () => { S.clientes = S.clientes.filter((c) => c.id !== Number(d.id)); save(); $$('.overlay').forEach((o) => o.remove()); render(); });
 };
 // CSV simples (aspas e vírgula/ponto-e-vírgula)
 function parseCSV(t) {
@@ -72,15 +72,15 @@ views.materiais = function () {
   const tabs = `<div class="chips"><button class="chip ${aba === 'estoque' ? 'on' : ''}" data-act="matTab" data-t="estoque">Materiais e estoque</button><button class="chip ${aba === 'compras' ? 'on' : ''}" data-act="matTab" data-t="compras">Compras feitas</button></div>`;
   const corpo = aba === 'estoque'
     ? (lista.length ? `<table class="t"><thead><tr><th></th><th>Material</th><th>Tipo</th><th class="r">Custo</th><th class="r">Em estoque</th><th class="r">Mínimo</th><th>Fornecedor</th></tr></thead><tbody>
-      ${lista.map((m) => `<tr class="click" data-act="editarMaterial" data-id="${m.id}"><td class="th">${thumb(m.foto, m.nome)}</td><td>${esc(m.nome)}</td><td>${m.tipo === 'tecido' ? 'Tecido' : 'Aviamento'}</td><td class="r">${money(m.custo)} / ${esc(m.unidade)}</td>
-      <td class="r ${m.minimo > 0 && m.estoque <= m.minimo ? 'bad' : ''}">${num(m.estoque)} ${esc(m.unidade)}${m.minimo > 0 && m.estoque <= m.minimo ? ' ⚠' : ''}</td><td class="r muted">${m.minimo ? num(m.minimo) : '—'}</td><td>${esc(m.fornecedor)}</td></tr>`).join('')}</tbody></table>`
-      : '<p class="empty big">Cadastre seus tecidos (cada estampa pode ser um item) e aviamentos.</p>')
+      ${lista.map((m) => `<tr class="click" tabindex="0" data-act="editarMaterial" data-id="${m.id}"><td class="th">${thumb(m.foto, m.nome)}</td><td>${esc(m.nome)}</td><td>${m.tipo === 'tecido' ? 'Tecido' : 'Aviamento'}</td><td class="r">${money(m.custo)} / ${esc(m.unidade)}</td>
+      <td class="r ${m.minimo > 0 && m.estoque <= m.minimo ? 'bad' : ''}">${num(m.estoque)} ${esc(m.unidade)}${m.minimo > 0 && m.estoque <= m.minimo ? ' ' + icon('alert') : ''}</td><td class="r muted">${m.minimo ? num(m.minimo) : '—'}</td><td>${esc(m.fornecedor)}</td></tr>`).join('')}</tbody></table>`
+      : (S.materiais.length ? vazio('Nenhum material com esse nome', 'Confira a busca.') : vazio('Seu estoque está vazio', 'Cadastre os tecidos (cada estampa pode ser um item) e os aviamentos que você usa.', 'novoMaterial', '+ Cadastrar o primeiro material')))
     : (S.compras.length ? `<table class="t"><thead><tr><th>Data</th><th>Material</th><th>Loja</th><th class="r">Qtd</th><th class="r">Valor pago</th><th></th></tr></thead><tbody>
       ${S.compras.slice().sort((a, b) => b.data.localeCompare(a.data) || b.id - a.id).map((c) => { const m = byId(S.materiais, c.materialId) || { nome: '(excluído)', unidade: '' };
-      return `<tr><td>${dataBR(c.data)}</td><td>${esc(m.nome)}</td><td>${esc(c.loja)}</td><td class="r">${num(c.qtd)} ${esc(m.unidade)}</td><td class="r">${money(c.valor)}</td><td><button class="icon" data-act="excluirCompra" data-id="${c.id}" title="Excluir compra">🗑</button></td></tr>`; }).join('')}</tbody></table>`
-      : '<p class="empty big">Nenhuma compra registrada.</p>');
+      return `<tr><td>${dataBR(c.data)}</td><td>${esc(m.nome)}</td><td>${esc(c.loja)}</td><td class="r">${num(c.qtd)} ${esc(m.unidade)}</td><td class="r">${money(c.valor)}</td><td><button class="icon" data-act="excluirCompra" data-id="${c.id}" title="Excluir compra" aria-label="Excluir compra">${icon('trash')}</button></td></tr>`; }).join('')}</tbody></table>`
+      : vazio('Nenhuma compra registrada', 'Registre o que comprou e o estoque e o custo se atualizam sozinhos.', 'novaCompra', '+ Registrar uma compra'));
   return `<div class="page-head"><h1>Materiais</h1><div class="row-btn"><button class="btn" data-act="novaCompra">+ Registrar compra</button><button class="btn primary" data-act="novoMaterial">+ Novo material</button></div></div>
-  <div class="toolbar">${tabs}${aba === 'estoque' ? `<input class="search" id="busca" placeholder="Buscar material…" value="${esc(ui.busca)}">` : ''}</div>${corpo}`;
+  <div class="toolbar">${tabs}${aba === 'estoque' ? `<input class="search" id="busca" placeholder="Buscar material…" value="${esc(ui.busca)}" aria-label="Buscar material">` : ''}</div>${corpo}`;
 };
 views.materiaisAfter = views.pedidosAfter;
 actions.matTab = (d) => { ui.matTab = d.t; render(); };
@@ -98,7 +98,7 @@ function formMaterial(m) {
     onSubmit: (v) => {
       const dados = { nome: v.nome.trim(), tipo: v.tipo, unidade: v.unidade, custo: parseFloat(v.custo) || 0, estoque: parseFloat(v.estoque) || 0, minimo: parseFloat(v.minimo) || 0, fornecedor: v.fornecedor, foto: v.foto || '' };
       if (novo) S.materiais.push({ id: nextId('material'), ...dados }); else Object.assign(m, dados);
-      save(); toast('Material salvo.'); render();
+      save(); toast('Pronto! Material salvo.'); render();
     },
     onOpen: (form) => ligarFoto(form),
   });
@@ -109,10 +109,10 @@ actions.excluirMaterial = (d) => {
   const id = Number(d.id);
   const usado = S.produtos.some((p) => p.tecidoId === id || p.aviamentos.some((a) => a.materialId === id));
   if (usado) return toast('Este material é usado em algum produto. Remova do produto antes.');
-  confirmar('Excluir este material?', () => { S.materiais = S.materiais.filter((m) => m.id !== id); save(); $$('.overlay').forEach((o) => o.remove()); render(); });
+  confirmar('Excluir este material? Isso não pode ser desfeito.', () => { S.materiais = S.materiais.filter((m) => m.id !== id); save(); $$('.overlay').forEach((o) => o.remove()); render(); });
 };
 actions.novaCompra = () => {
-  if (!S.materiais.length) return toast('Cadastre o material primeiro.');
+  if (!S.materiais.length) return toast('Antes de registrar uma compra, cadastre o material.');
   openModal({
     title: 'Registrar compra de material',
     body: `<div class="form-grid">${F.date('data', 'Data', hoje(), 'required')}${F.text('loja', 'Loja / fornecedor', '')}
@@ -129,7 +129,7 @@ actions.novaCompra = () => {
       S.compras.push(c);
       m.estoque = Calc.r2((m.estoque || 0) + qtd); m.custo = Calc.r2(valor / qtd);
       S.despesas.push({ id: nextId('despesa'), data: v.data, descricao: `Compra: ${m.nome}${v.loja ? ' (' + v.loja + ')' : ''}`, categoria: 'Material', valor, compraId: c.id });
-      save(); toast('Compra registrada, estoque e custo atualizados.'); render();
+      save(); toast('Compra registrada! Estoque e custo já foram atualizados.'); render();
     },
   });
 };
@@ -146,22 +146,22 @@ views.produtos = function () {
   const q = norm(ui.busca);
   const lista = S.produtos.filter((p) => !q || norm(p.nome + p.categoria + p.codigo).includes(q)).sort((a, b) => (a.categoria || '').localeCompare(b.categoria || '') || a.nome.localeCompare(b.nome));
   return `<div class="page-head"><h1>Produtos</h1><button class="btn primary" data-act="novoProduto">+ Novo produto</button></div>
-  <div class="toolbar"><div class="row-btn"><input class="search" id="busca" placeholder="Buscar produto ou categoria…" value="${esc(ui.busca)}">
+  <div class="toolbar"><div class="row-btn"><input class="search" id="busca" placeholder="Buscar produto ou categoria…" value="${esc(ui.busca)}" aria-label="Buscar produto ou categoria">
     <div class="chips"><button class="chip ${vista === 'galeria' ? 'on' : ''}" data-act="prodVista" data-v="galeria">Galeria</button><button class="chip ${vista === 'lista' ? 'on' : ''}" data-act="prodVista" data-v="lista">Lista</button></div></div>
     <span class="muted small">Os preços usam o tecido padrão e mudam sozinhos quando o preço de um material muda.</span></div>
   ${lista.length && vista === 'galeria' ? `<div class="galeria">${lista.map((p) => { const c = custoLista(p); return `<div class="gcard" tabindex="0" data-act="editarProduto" data-id="${p.id}">${thumb(p.foto, p.nome, 'xl')}
     <b>${esc(p.nome)}</b><span class="muted small">${esc([p.codigo, p.categoria].filter(Boolean).join(' · '))}</span>
     <div class="gp"><span>Atacado<b>${money(Calc.preco(c, p.margemAtacado))}</b></span><span>Varejo<b>${money(Calc.preco(c, p.margemVarejo))}</b></span></div></div>`; }).join('')}</div>` : ''}
   ${lista.length && vista === 'lista' ? `<table class="t"><thead><tr><th></th><th>Cód.</th><th>Produto</th><th>Categoria</th><th class="r">Custo</th><th class="r">Atacado</th><th class="r">Varejo</th><th class="r">Margem (at./var.)</th><th></th></tr></thead><tbody>
-  ${lista.map((p) => { const c = custoLista(p); return `<tr class="click" data-act="editarProduto" data-id="${p.id}"><td class="th">${thumb(p.foto, p.nome)}</td><td>${esc(p.codigo)}</td><td>${esc(p.nome)}</td><td>${esc(p.categoria)}</td><td class="r">${money(c)}</td>
+  ${lista.map((p) => { const c = custoLista(p); return `<tr class="click" tabindex="0" data-act="editarProduto" data-id="${p.id}"><td class="th">${thumb(p.foto, p.nome)}</td><td>${esc(p.codigo)}</td><td>${esc(p.nome)}</td><td>${esc(p.categoria)}</td><td class="r">${money(c)}</td>
     <td class="r"><b>${money(Calc.preco(c, p.margemAtacado))}</b></td><td class="r"><b>${money(Calc.preco(c, p.margemVarejo))}</b></td><td class="r muted">${num(p.margemAtacado, 1)}% / ${num(p.margemVarejo, 1)}%</td>
-    <td><button class="icon" data-act="duplicarProduto" data-id="${p.id}" title="Duplicar">⧉</button></td></tr>`; }).join('')}</tbody></table>`
-  : ''}${lista.length ? '' : '<p class="empty big">Cadastre seus produtos para o programa calcular custo e preço.</p>'}`;
+    <td><button class="icon" data-act="duplicarProduto" data-id="${p.id}" title="Duplicar" aria-label="Duplicar">${icon('copy')}</button></td></tr>`; }).join('')}</tbody></table>`
+  : ''}${lista.length ? '' : (S.produtos.length ? vazio('Nenhum produto com esse nome', 'Confira a busca.') : vazio('Nenhum produto ainda', 'Cadastre o primeiro e o programa calcula custo e preço sozinho.', 'novoProduto', '+ Cadastrar o primeiro produto'))}`;
 };
 actions.prodVista = (d) => { ui.prodVista = d.v; render(); };
 views.produtosAfter = views.pedidosAfter;
-const linhaAviam = (a = { materialId: '', qtd: 1 }) => `<div class="aviam"><select name="av_mat">${[['', '— material —'], ...S.materiais.filter((m) => m.tipo === 'aviamento').map((m) => [m.id, `${m.nome} (${money(m.custo)}/${m.unidade})`])].map(([v, t]) => `<option value="${v}" ${String(v) === String(a.materialId) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
-  <input name="av_qtd" type="number" step="any" min="0" value="${a.qtd}" title="Quantidade"><button type="button" class="icon" data-act="rmAviam">🗑</button></div>`;
+const linhaAviam = (a = { materialId: '', qtd: 1 }) => `<div class="aviam"><select name="av_mat" aria-label="Aviamento">${[['', '— material —'], ...S.materiais.filter((m) => m.tipo === 'aviamento').map((m) => [m.id, `${m.nome} (${money(m.custo)}/${m.unidade})`])].map(([v, t]) => `<option value="${v}" ${String(v) === String(a.materialId) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
+  <input name="av_qtd" type="number" step="any" min="0" value="${a.qtd}" title="Quantidade" aria-label="Quantidade"><button type="button" class="icon" data-act="rmAviam" title="Remover" aria-label="Remover">${icon('trash')}</button></div>`;
 actions.rmAviam = (d, el) => { const f = el.closest('form'); el.closest('.aviam').remove(); f.dispatchEvent(new Event('input')); };
 actions.addAviam = (d, el) => { el.closest('form').querySelector('#aviams').insertAdjacentHTML('beforeend', linhaAviam()); };
 
@@ -207,7 +207,7 @@ function formProduto(p, copia) {
     onSubmit: (v, form) => {
       const dados = lerProdutoForm(form);
       if (novo) S.produtos.push({ id: nextId('produto'), ...dados }); else Object.assign(p, dados);
-      save(); toast('Produto salvo.'); render();
+      save(); toast('Pronto! Produto salvo.'); render();
     },
   });
 }
@@ -217,5 +217,5 @@ actions.duplicarProduto = (d) => formProduto(byId(S.produtos, d.id), true);
 actions.excluirProduto = (d) => {
   if (S.pedidos.some((o) => o.itens.some((i) => i.produtoId === Number(d.id)))) return toast('Este produto já foi usado em pedidos e não pode ser excluído.');
   if (S.kits.some((k) => k.itens.some((i) => Number(i.produtoId) === Number(d.id)))) return toast('Este produto faz parte de um kit. Tire-o do kit antes de excluir.');
-  confirmar('Excluir este produto?', () => { S.produtos = S.produtos.filter((p) => p.id !== Number(d.id)); save(); $$('.overlay').forEach((o) => o.remove()); render(); });
+  confirmar('Excluir este produto? Isso não pode ser desfeito.', () => { S.produtos = S.produtos.filter((p) => p.id !== Number(d.id)); save(); $$('.overlay').forEach((o) => o.remove()); render(); });
 };

@@ -3,7 +3,7 @@ const saldoPedido = (p) => Calc.r2(Calc.totalPedido(p) - Calc.pagoPedido(p));
 
 function avisosBackup() {
   const c = ui.bk; if (!c) return [];
-  if (c.ultimoErro) return [{ cls: 'bad', t: '⚠ A cópia de segurança falhou. Confira a pasta escolhida em Configurações.' }];
+  if (c.ultimoErro) return [{ cls: 'bad', t: icon('alert') + ' A cópia de segurança falhou. Confira a pasta escolhida em Configurações.' }];
   if (c.frequencia === 'desligado') return [{ cls: 'warn', t: 'A cópia de segurança automática está desligada.' }];
   return [];
 }
@@ -27,10 +27,10 @@ views.painel = function () {
 
   const vazio = !S.materiais.length || !S.produtos.length;
   const passos = vazio ? `<section class="card hint"><h3>Por onde começar</h3><ol>
-      <li class="${S.materiais.length ? 'ok' : ''}"><a data-act="go" data-view="materiais">Cadastre seus materiais</a> (tecidos, elástico, botões…) com o preço que você paga.</li>
-      <li class="${S.produtos.length ? 'ok' : ''}"><a data-act="go" data-view="produtos">Cadastre seus produtos</a>: o programa calcula o custo e o preço sozinho.</li>
-      <li class="${S.clientes.length ? 'ok' : ''}"><a data-act="go" data-view="clientes">Cadastre clientes</a> (ou importe da planilha antiga).</li>
-      <li class="${S.pedidos.length ? 'ok' : ''}"><a data-act="go" data-view="pedidos">Lance seu primeiro pedido</a>.</li>
+      <li class="${S.materiais.length ? 'ok' : ''}"><a href="#" data-act="go" data-view="materiais">Cadastre seus materiais</a> (tecidos, elástico, botões…) com o preço que você paga.</li>
+      <li class="${S.produtos.length ? 'ok' : ''}"><a href="#" data-act="go" data-view="produtos">Cadastre seus produtos</a>: o programa calcula o custo e o preço sozinho.</li>
+      <li class="${S.clientes.length ? 'ok' : ''}"><a href="#" data-act="go" data-view="clientes">Cadastre clientes</a> (ou importe da planilha antiga).</li>
+      <li class="${S.pedidos.length ? 'ok' : ''}"><a href="#" data-act="go" data-view="pedidos">Lance seu primeiro pedido</a>.</li>
     </ol></section>` : '';
 
   return `<div class="page-head"><h1>Painel</h1><span class="muted">${esc(mesNome(m))}</span></div>
@@ -46,18 +46,18 @@ views.painel = function () {
     <section class="card"><h3>Próximas entregas</h3>
       ${entregas.length ? `<table class="t"><tbody>${entregas.map((p) => {
         const atraso = p.entrega && p.entrega < hoje();
-        return `<tr class="click" data-act="abrirPedido" data-id="${p.id}"><td>#${p.numero}</td><td>${esc(nomeCliente(p.clienteId))}</td>
+        return `<tr class="click" tabindex="0" data-act="abrirPedido" data-id="${p.id}"><td>#${p.numero}</td><td>${esc(nomeCliente(p.clienteId))}</td>
           <td class="${atraso ? 'bad' : ''}">${p.entrega ? dataBR(p.entrega) + (atraso ? ' · atrasado' : '') : 'sem data'}</td><td><span class="tag s-${p.status}">${STATUS_NOME[p.status]}</span></td></tr>`;
-      }).join('')}</tbody></table>` : '<p class="empty">Nenhuma entrega pendente.</p>'}
+      }).join('')}</tbody></table>` : '<p class="empty">Nenhuma entrega na fila por enquanto.</p>'}
     </section>
     <section class="card"><h3>Vendas dos últimos 6 meses</h3>
       <div class="bars">${serie.map((v, i) => `<div class="bar"><i style="height:${Math.round((v / max) * 100)}%" title="${money(v)}"></i><em>${money(v).replace(',00', '')}</em><span>${new Date(meses[i] + '-15').toLocaleDateString('pt-BR', { month: 'short' })}</span></div>`).join('')}</div>
     </section>
     <section class="card"><h3>Atenção</h3>
       <ul class="alerts">
-        ${orcamentos.length ? `<li><a data-act="filtrarPedidos" data-f="orcamento">${orcamentos.length} orçamento(s) aguardando resposta</a></li>` : ''}
-        ${baixo.map((x) => `<li class="bad"><a data-act="go" data-view="materiais">Estoque baixo: ${esc(x.nome)} (${num(x.estoque)} ${x.unidade})</a></li>`).join('')}
-        ${avisosBackup().map((a) => `<li class="${a.cls}"><a data-act="go" data-view="config">${a.t}</a></li>`).join('')}
+        ${orcamentos.length ? `<li><a href="#" data-act="filtrarPedidos" data-f="orcamento">${orcamentos.length} orçamento(s) aguardando resposta</a></li>` : ''}
+        ${baixo.map((x) => `<li class="bad"><a href="#" data-act="go" data-view="materiais">Estoque baixo: ${esc(x.nome)} (${num(x.estoque)} ${x.unidade})</a></li>`).join('')}
+        ${avisosBackup().map((a) => `<li class="${a.cls}"><a href="#" data-act="go" data-view="config">${a.t}</a></li>`).join('')}
         ${!orcamentos.length && !baixo.length && !avisosBackup().length ? '<li class="muted">Tudo em ordem por aqui.</li>' : ''}
       </ul>
     </section>

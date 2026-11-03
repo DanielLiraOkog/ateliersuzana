@@ -20,3 +20,10 @@ com cópia automática diária em `backups\` (últimos 30 dias).
 ## Kits
 - Menu Kits: junte vários produtos (com tecido/estampa por item) para Natal, Dia das Mães, sorteio ou promoção. Custo = produtos + embalagem + tempo de montagem; preço pela margem do kit ou preço fixo de varejo.
 - Kits entram nos pedidos (o estoque baixa pelos materiais de cada produto do kit) e aparecem no Catálogo (aba Kits). Sem foto própria, mostram um mosaico das fotos dos produtos.
+
+## Design (regras para mudanças futuras)
+- Cores, raios, sombras, tipografia, espaços e tempos de movimento ficam em tokens no começo de `src/style.css`. Não usar cor solta (hex) fora do bloco de impressão.
+- Contraste: texto >= 4,5:1 e bordas de campos/foco >= 3:1 (valores conferidos no tema claro e no escuro da prévia).
+- Todo elemento clicável precisa de foco visível e acesso por teclado. Ícones são SVG de traço em `ICON` (`src/core.js`); não usar emojis como ícone.
+- Estado vazio usa `vazio(titulo, texto, acao, rotulo)` e sempre oferece o próximo passo. Textos de sucesso começam com "Pronto!".
+- Movimento respeita `prefers-reduced-motion`.

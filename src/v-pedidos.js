@@ -8,12 +8,12 @@ views.pedidos = function () {
   lista.sort((a, b) => b.numero - a.numero);
   return `<div class="page-head"><h1>Pedidos</h1><button class="btn primary" data-act="novoPedido">+ Novo pedido</button></div>
     <div class="toolbar"><div class="chips">${filtros.map(([k, t]) => `<button class="chip ${f === k ? 'on' : ''}" data-act="filtrarPedidos" data-f="${k}">${t}</button>`).join('')}</div>
-      <input class="search" id="busca" placeholder="Buscar cliente ou nº…" value="${esc(ui.busca)}"></div>
+      <input class="search" id="busca" placeholder="Buscar cliente ou nº…" value="${esc(ui.busca)}" aria-label="Buscar cliente ou nº"></div>
     ${lista.length ? `<table class="t"><thead><tr><th>Nº</th><th>Cliente</th><th>Pedido em</th><th>Entrega</th><th>Status</th><th class="r">Total</th><th class="r">Falta receber</th></tr></thead><tbody>
-      ${lista.map((p) => { const s = saldoPedido(p); return `<tr class="click" data-act="abrirPedido" data-id="${p.id}"><td>#${p.numero}</td><td>${esc(nomeCliente(p.clienteId))}</td><td>${dataBR(p.data)}</td>
+      ${lista.map((p) => { const s = saldoPedido(p); return `<tr class="click" tabindex="0" data-act="abrirPedido" data-id="${p.id}"><td>#${p.numero}</td><td>${esc(nomeCliente(p.clienteId))}</td><td>${dataBR(p.data)}</td>
         <td>${dataBR(p.entrega)}</td><td><span class="tag s-${p.status}">${STATUS_NOME[p.status]}</span></td><td class="r">${money(Calc.totalPedido(p))}</td>
-        <td class="r ${s > 0 && p.status !== 'cancelado' ? 'warn' : 'muted'}">${p.status === 'cancelado' ? '—' : s > 0 ? money(s) : 'pago ✓'}</td></tr>`; }).join('')}
-    </tbody></table>` : '<p class="empty big">Nenhum pedido aqui ainda.</p>'}`;
+        <td class="r ${s > 0 && p.status !== 'cancelado' ? 'warn' : 'muted'}">${p.status === 'cancelado' ? '—' : s > 0 ? money(s) : icon('check') + ' pago'}</td></tr>`; }).join('')}
+    </tbody></table>` : (S.pedidos.length ? vazio('Nenhum pedido nessa situação', 'Escolha outra situação ou limpe a busca.') : vazio('Nenhum pedido por aqui ainda', 'Quando uma cliente pedir, é aqui que tudo começa.', 'novoPedido', '+ Lançar o primeiro pedido'))}`;
 };
 views.pedidosAfter = function () {
   const b = $('#busca'); if (!b) return;
@@ -29,7 +29,7 @@ actions.novoPedido = () => {
 actions.abrirPedido = (d) => { ui.draft = JSON.parse(JSON.stringify(byId(S.pedidos, d.id))); go('pedido'); };
 
 // ---------- editor de pedido ----------
-const opcoesProdutos = () => [['', '— escolha o produto ou kit —'], ...S.produtos.map((p) => [p.id, p.nome]), ...S.kits.map((k) => ['k' + k.id, '🎁 Kit: ' + k.nome])];
+const opcoesProdutos = () => [['', '— escolha o produto ou kit —'], ...S.produtos.map((p) => [p.id, p.nome]), ...S.kits.map((k) => ['k' + k.id, 'Kit · ' + k.nome])];
 const nomeItem = (i) => { if (i.kitId) { const k = byId(S.kits, i.kitId); return k ? 'Kit: ' + k.nome : 'Kit removido'; } const p = byId(S.produtos, i.produtoId); return p ? p.nome : ''; };
 const thumbItem = (i) => { if (i.kitId) { const k = byId(S.kits, i.kitId); return k ? kitThumb(k) : thumb('', '?'); } const p = byId(S.produtos, i.produtoId); return thumb(p && p.foto, p && p.nome); };
 const opcoesTecidos = () => [['', 'tecido padrão do produto'], ...S.materiais.filter((m) => m.tipo === 'tecido').map((m) => [m.id, m.nome])];
@@ -38,14 +38,14 @@ function linhaItem(i, idx) {
   const p = byId(S.produtos, i.produtoId);
   return `<tr data-idx="${idx}">
     <td class="it-th th">${thumbItem(i)}</td>
-    <td>${F.select('produtoId', '', opcoesProdutos(), i.kitId ? 'k' + i.kitId : i.produtoId, 'class="it-prod"').replace('<label>', '<label class="bare">')}</td>
-    <td>${F.select('tecidoId', '', opcoesTecidos(), i.tecidoId || '', 'class="it-tec"' + (i.kitId ? ' disabled' : '')).replace('<label>', '<label class="bare">')}</td>
-    <td><input class="it-desc" placeholder="cor, tamanho, detalhes" value="${esc(i.descricao || '')}"></td>
-    <td><input class="it-qtd w60" type="number" min="1" step="1" value="${i.qtd}"></td>
-    <td><select class="it-tipo w90"><option value="atacado" ${i.tipoPreco === 'atacado' ? 'selected' : ''}>Atacado</option><option value="varejo" ${i.tipoPreco !== 'atacado' ? 'selected' : ''}>Varejo</option></select></td>
-    <td><input class="it-preco w90" type="number" step="0.01" min="0" value="${i.preco}"></td>
+    <td>${F.select('produtoId', '', opcoesProdutos(), i.kitId ? 'k' + i.kitId : i.produtoId, 'class="it-prod" aria-label="Produto ou kit"').replace('<label>', '<label class="bare">')}</td>
+    <td>${F.select('tecidoId', '', opcoesTecidos(), i.tecidoId || '', 'class="it-tec" aria-label="Tecido ou estampa"' + (i.kitId ? ' disabled' : '')).replace('<label>', '<label class="bare">')}</td>
+    <td><input class="it-desc" aria-label="Detalhes do item" placeholder="cor, tamanho, detalhes" value="${esc(i.descricao || '')}"></td>
+    <td><input class="it-qtd w60" aria-label="Quantidade" type="number" min="1" step="1" value="${i.qtd}"></td>
+    <td><select class="it-tipo w90" aria-label="Tipo de preço"><option value="atacado" ${i.tipoPreco === 'atacado' ? 'selected' : ''}>Atacado</option><option value="varejo" ${i.tipoPreco !== 'atacado' ? 'selected' : ''}>Varejo</option></select></td>
+    <td><input class="it-preco w90" aria-label="Preço unitário" type="number" step="0.01" min="0" value="${i.preco}"></td>
     <td class="r it-sub">${money(i.qtd * i.preco)}</td>
-    <td><button type="button" class="icon" data-act="rmItem" data-idx="${idx}" title="Remover">🗑</button></td></tr>`;
+    <td><button type="button" class="icon" data-act="rmItem" data-idx="${idx}" title="Remover" aria-label="Remover">${icon('trash')}</button></td></tr>`;
 }
 
 function precoSugerido(item) {
@@ -68,7 +68,7 @@ views.pedido = function () {
   const novo = !d.id;
   return `<div class="page-head"><h1>${novo ? 'Novo pedido' : 'Pedido #' + d.numero}</h1>
     <div class="row-btn"><button class="btn ghost" data-act="go" data-view="pedidos">← Voltar</button>
-    ${novo ? '' : '<button class="btn" data-act="imprimirPedido">🖨 Imprimir / PDF</button><button class="btn danger-o" data-act="excluirPedido">Excluir</button>'}
+    ${novo ? '' : '<button class="btn" data-act="imprimirPedido">' + icon('printer') + ' Imprimir / PDF</button><button class="btn danger-o" data-act="excluirPedido">Excluir</button>'}
     <button class="btn primary" data-act="salvarPedido">Salvar pedido</button></div></div>
   <div class="card form-grid" id="pedForm">
     <label>Cliente<div class="inline"><select name="clienteId" id="pCliente">${[['', '— escolha o cliente —'], ...S.clientes.slice().sort((a, b) => a.nome.localeCompare(b.nome)).map((c) => [c.id, c.nome])].map(([v, t]) => `<option value="${v}" ${String(v) === String(d.clienteId) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
@@ -89,7 +89,7 @@ views.pedido = function () {
     </section>
     <section class="card"><h3>Pagamento</h3>
       <div class="totais" id="totais"></div>
-      <table class="t"><tbody>${d.pagamentos.map((x, i) => `<tr><td>${dataBR(x.data)}</td><td>${esc(x.forma)}</td><td class="r">${money(x.valor)}</td><td><button type="button" class="icon" data-act="rmPag" data-idx="${i}">🗑</button></td></tr>`).join('') || '<tr><td class="muted">Nenhum pagamento registrado.</td></tr>'}</tbody></table>
+      <table class="t"><tbody>${d.pagamentos.map((x, i) => `<tr><td>${dataBR(x.data)}</td><td>${esc(x.forma)}</td><td class="r">${money(x.valor)}</td><td><button type="button" class="icon" data-act="rmPag" data-idx="${i}" title="Remover" aria-label="Remover">${icon('trash')}</button></td></tr>`).join('') || '<tr><td class="muted">Nenhum pagamento registrado.</td></tr>'}</tbody></table>
       <button type="button" class="btn sm" data-act="addPag">+ Registrar pagamento</button>
     </section>
   </div>
@@ -164,16 +164,16 @@ actions.clienteRapido = () => {
 actions.salvarPedido = () => {
   lerPedidoDaTela();
   const d = ui.draft;
-  if (!d.clienteId) return toast('Escolha o cliente.');
-  if (!d.itens.length) return toast('Adicione ao menos um item.');
-  if (d.itens.some((i) => !i.produtoId && !i.kitId)) return toast('Há item sem produto ou kit escolhido.');
+  if (!d.clienteId) return toast('Falta escolher o cliente.');
+  if (!d.itens.length) return toast('Falta adicionar pelo menos um item ao pedido.');
+  if (d.itens.some((i) => !i.produtoId && !i.kitId)) return toast('Tem um item sem produto ou kit. Escolha qual é ou remova a linha.');
   d.itens.forEach((i) => delete i.auto);
   if (!d.id) { d.id = nextId('pedido'); d.numero = nextId('numeroPedido'); S.pedidos.push(d); }
   else S.pedidos[S.pedidos.findIndex((p) => p.id === d.id)] = d;
   sincronizarEstoque(d);
   const neg = (d.baixa || []).map((b) => byId(S.materiais, b.materialId)).filter((m) => m && m.estoque < 0);
   save();
-  toast(neg.length ? `Salvo. Atenção: estoque negativo de ${neg.map((m) => m.nome).join(', ')}.` : 'Pedido salvo.');
+  toast(neg.length ? `Salvo. Atenção: estoque negativo de ${neg.map((m) => m.nome).join(', ')}.` : 'Pronto! Pedido salvo.');
   ui.draft = JSON.parse(JSON.stringify(d));
   render();
 };

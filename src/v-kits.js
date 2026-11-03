@@ -40,10 +40,10 @@ views.kits = function () {
     .sort((a, b) => (a.ocasiao || '').localeCompare(b.ocasiao || '') || a.nome.localeCompare(b.nome));
   return `<div class="page-head"><h1>Kits</h1><button class="btn primary" data-act="novoKit">+ Montar kit</button></div>
   <p class="muted" style="margin-top:-8px">Junte vários produtos num kit para promoção, sorteio ou datas como Natal e Dia das Mães. O preço sai da soma dos produtos, mais a embalagem e o tempo de montagem.</p>
-  <div class="cat-bar"><input class="search" id="busca" placeholder="Buscar kit…" value="${esc(ui.busca)}">
+  <div class="cat-bar"><input class="search" id="busca" placeholder="Buscar kit…" value="${esc(ui.busca)}" aria-label="Buscar kit">
     <div class="chips">${[['todas', 'Todos'], ...ocs.map((o) => [o, o])].map(([k, t]) => `<button class="chip ${oc === k ? 'on' : ''}" data-act="kitOc" data-o="${esc(k)}">${esc(t)}</button>`).join('')}</div></div>
   ${lista.length ? `<div class="cat-grid">${lista.map((k) => cardKit(k, 'editarKit')).join('')}</div>`
-    : `<p class="empty big">${S.kits.length ? 'Nenhum kit com esses filtros.' : 'Nenhum kit ainda. Clique em "Montar kit" e escolha os produtos.'}</p>`}`;
+    : `${S.kits.length ? vazio('Nenhum kit com esses filtros', 'Troque a ocasião ou limpe a busca.') : vazio('Nenhum kit ainda', 'Junte produtos num kit para o Natal, o Dia das Mães ou um sorteio.', 'novoKit', '+ Montar o primeiro kit')}`}`;
 };
 views.kitsAfter = views.pedidosAfter;
 actions.kitOc = (d) => { ui.kitOc = d.o; render(); };
@@ -52,9 +52,9 @@ actions.editarKit = (d) => formKit(byId(S.kits, d.id));
 
 // ---------- editor ----------
 const linhaKit = (c = { produtoId: '', tecidoId: '', qtd: 1 }) => `<div class="kit-item">
-  <select name="ki_prod">${[['', '— produto —'], ...S.produtos.slice().sort((a, b) => a.nome.localeCompare(b.nome)).map((p) => [p.id, p.nome])].map(([v, t]) => `<option value="${v}" ${String(v) === String(c.produtoId) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
-  <select name="ki_tec" title="Estampa / tecido deste item">${[['', 'tecido padrão'], ...S.materiais.filter((m) => m.tipo === 'tecido').map((m) => [m.id, m.nome])].map(([v, t]) => `<option value="${v}" ${String(v) === String(c.tecidoId) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
-  <input name="ki_qtd" type="number" min="1" step="1" value="${c.qtd}" title="Quantidade"><button type="button" class="icon" data-act="rmKitItem" title="Tirar do kit">🗑</button></div>`;
+  <select name="ki_prod" aria-label="Produto">${[['', '— produto —'], ...S.produtos.slice().sort((a, b) => a.nome.localeCompare(b.nome)).map((p) => [p.id, p.nome])].map(([v, t]) => `<option value="${v}" ${String(v) === String(c.produtoId) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
+  <select name="ki_tec" title="Estampa / tecido deste item" aria-label="Estampa ou tecido deste item">${[['', 'tecido padrão'], ...S.materiais.filter((m) => m.tipo === 'tecido').map((m) => [m.id, m.nome])].map(([v, t]) => `<option value="${v}" ${String(v) === String(c.tecidoId) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
+  <input name="ki_qtd" type="number" min="1" step="1" value="${c.qtd}" title="Quantidade" aria-label="Quantidade"><button type="button" class="icon" data-act="rmKitItem" title="Tirar do kit" aria-label="Tirar do kit">${icon('trash')}</button></div>`;
 actions.addKitItem = (d, el) => { el.closest('form').querySelector('#kitItens').insertAdjacentHTML('beforeend', linhaKit()); };
 actions.rmKitItem = (d, el) => { const f = el.closest('form'); el.closest('.kit-item').remove(); f.dispatchEvent(new Event('input')); };
 
@@ -102,9 +102,9 @@ function formKit(k, copia) {
     },
     onSubmit: (v, form) => {
       const dados = lerKitForm(form);
-      if (!dados.itens.length) { toast('Coloque ao menos um produto no kit.'); return false; }
+      if (!dados.itens.length) { toast('Um kit precisa de pelo menos um produto. Escolha o que vai dentro.'); return false; }
       if (novo) S.kits.push({ id: nextId('kit'), ...dados }); else Object.assign(k, dados);
-      save(); toast('Kit salvo.'); render();
+      save(); toast('Pronto! Kit salvo.'); render();
     },
   });
 }
@@ -112,7 +112,7 @@ actions.kitDuplicar = (d) => { const k = byId(S.kits, d.id); fecharModais(); for
 actions.excluirKit = (d) => {
   const id = Number(d.id);
   if (S.pedidos.some((o) => o.itens.some((i) => i.kitId === id))) return toast('Este kit já foi usado em pedidos e não pode ser excluído. Desmarque "Mostrar no Catálogo" para tirá-lo de circulação.');
-  confirmar('Excluir este kit? Os produtos dele continuam cadastrados.', () => { S.kits = S.kits.filter((k) => k.id !== id); save(); fecharModais(); render(); });
+  confirmar('Excluir este kit? Os produtos dele continuam cadastrados, mas isso não pode ser desfeito.', () => { S.kits = S.kits.filter((k) => k.id !== id); save(); fecharModais(); render(); });
 };
 // Cria um pedido novo já com este kit.
 function pedidoComItem(item) {

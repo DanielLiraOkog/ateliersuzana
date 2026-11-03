@@ -14,16 +14,16 @@ views.financeiro = function () {
     <div class="stat"><span>Saldo do mês</span><b class="${tEnt - tSai < 0 ? 'bad' : 'good'}">${money(tEnt - tSai)}</b></div></div>
   <div class="grid2">
     <section class="card"><h3>Entradas (pagamentos recebidos)</h3>
-      ${entradas.length ? `<table class="t"><tbody>${entradas.map((x) => `<tr class="click" data-act="abrirPedido" data-id="${x.pedido.id}"><td>${dataBR(x.data)}</td><td>#${x.pedido.numero} · ${esc(nomeCliente(x.pedido.clienteId))}</td><td>${esc(x.forma)}</td><td class="r good">${money(x.valor)}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">Nada recebido neste mês.</p>'}
+      ${entradas.length ? `<table class="t"><tbody>${entradas.map((x) => `<tr class="click" tabindex="0" data-act="abrirPedido" data-id="${x.pedido.id}"><td>${dataBR(x.data)}</td><td>#${x.pedido.numero} · ${esc(nomeCliente(x.pedido.clienteId))}</td><td>${esc(x.forma)}</td><td class="r good">${money(x.valor)}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">Nada recebido neste mês ainda.</p>'}
     </section>
     <section class="card"><h3>Saídas (gastos)</h3>
       ${saidas.length ? `<table class="t"><tbody>${saidas.map((d) => `<tr><td>${dataBR(d.data)}</td><td>${esc(d.descricao)}</td><td class="muted">${esc(d.categoria)}</td><td class="r bad">${money(d.valor)}</td>
-        <td><button class="icon" data-act="excluirDespesa" data-id="${d.id}" title="Excluir">🗑</button></td></tr>`).join('')}</tbody></table>
-        <p class="small muted">${Object.entries(porCat).map(([k, v]) => `${esc(k)}: ${money(v)}`).join(' · ')}</p>` : '<p class="empty">Nenhum gasto neste mês.</p>'}
+        <td><button class="icon" data-act="excluirDespesa" data-id="${d.id}" title="Excluir" aria-label="Excluir">${icon('trash')}</button></td></tr>`).join('')}</tbody></table>
+        <p class="small muted">${Object.entries(porCat).map(([k, v]) => `${esc(k)}: ${money(v)}`).join(' · ')}</p>` : '<p class="empty">Nenhum gasto lançado neste mês.</p>'}
     </section>
   </div>
   <section class="card"><h3>Clientes que ainda devem</h3>
-    ${devedores.length ? `<table class="t"><thead><tr><th>Pedido</th><th>Cliente</th><th>Entrega</th><th class="r">Total</th><th class="r">Falta</th></tr></thead><tbody>${devedores.map((p) => `<tr class="click" data-act="abrirPedido" data-id="${p.id}"><td>#${p.numero}</td><td>${esc(nomeCliente(p.clienteId))}</td><td>${dataBR(p.entrega)}</td><td class="r">${money(Calc.totalPedido(p))}</td><td class="r warn">${money(saldoPedido(p))}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">Ninguém devendo. 🎉</p>'}
+    ${devedores.length ? `<table class="t"><thead><tr><th>Pedido</th><th>Cliente</th><th>Entrega</th><th class="r">Total</th><th class="r">Falta</th></tr></thead><tbody>${devedores.map((p) => `<tr class="click" tabindex="0" data-act="abrirPedido" data-id="${p.id}"><td>#${p.numero}</td><td>${esc(nomeCliente(p.clienteId))}</td><td>${dataBR(p.entrega)}</td><td class="r">${money(Calc.totalPedido(p))}</td><td class="r warn">${money(saldoPedido(p))}</td></tr>`).join('')}</tbody></table>` : '<p class="empty">Ninguém está devendo. Tudo em dia!</p>'}
   </section>`;
 };
 actions.mesAnt = () => { ui.mes = somaMes(ui.mes, -1); render(); };
@@ -31,12 +31,12 @@ actions.mesProx = () => { ui.mes = somaMes(ui.mes, 1); render(); };
 actions.novaDespesa = () => openModal({
   title: 'Lançar gasto',
   body: `<div class="form-grid">${F.date('data', 'Data', hoje(), 'required')}${F.text('descricao', 'Descrição', '', 'required')}${F.select('categoria', 'Categoria', CATEGORIAS_DESP.map((c) => [c, c]))}${F.num('valor', 'Valor (R$)', '', 'required min="0.01"')}</div>`,
-  onSubmit: (v) => { S.despesas.push({ id: nextId('despesa'), data: v.data, descricao: v.descricao, categoria: v.categoria, valor: Calc.r2(parseFloat(v.valor)) }); save(); toast('Gasto lançado.'); render(); },
+  onSubmit: (v) => { S.despesas.push({ id: nextId('despesa'), data: v.data, descricao: v.descricao, categoria: v.categoria, valor: Calc.r2(parseFloat(v.valor)) }); save(); toast('Pronto! Gasto lançado.'); render(); },
 });
 actions.excluirDespesa = (d) => {
   const x = byId(S.despesas, d.id);
   if (x.compraId) return toast('Este gasto veio de uma compra de material. Exclua a compra na tela Materiais.');
-  confirmar('Excluir este gasto?', () => { S.despesas = S.despesas.filter((y) => y.id !== x.id); save(); render(); });
+  confirmar('Excluir este gasto? Isso não pode ser desfeito.', () => { S.despesas = S.despesas.filter((y) => y.id !== x.id); save(); render(); });
 };
 
 // ================= CONFIGURAÇÕES =================
@@ -55,12 +55,12 @@ views.config = function () {
     <p class="muted" id="horaInfo"></p>
     <p class="muted small">Ao mudar estes valores, o custo e o preço de todos os produtos são recalculados. Pedidos já lançados mantêm o preço combinado.</p></section>
   <button class="btn primary">Salvar configurações</button></form>
-  <section class="card" style="margin-top:18px" id="bkCard"><h3>Cópia de segurança automática</h3><p class="muted">Carregando…</p></section>
+  <section class="card" style="margin-top:18px" id="bkCard"><h3>Cópia de segurança automática</h3><p class="muted">Buscando suas configurações…</p></section>
   <section class="card"><h3>Trocar de computador ou restaurar dados</h3>
     <ol class="passos"><li><b>No computador antigo:</b> clique em <i>Salvar cópia em arquivo</i> e leve o arquivo (pen drive, Drive ou WhatsApp). Se as cópias automáticas já vão para um pen drive ou para a nuvem, esse passo é opcional.</li>
     <li><b>No computador novo:</b> instale o programa, abra e clique em <i>Restaurar de um arquivo</i>, ou escolha uma cópia automática na lista abaixo.</li></ol>
     <div class="row-btn"><button class="btn" data-act="exportar">Salvar cópia em arquivo…</button><button class="btn danger-o" data-act="restaurar">Restaurar de um arquivo…</button></div>
-    <h3 style="margin-top:18px">Cópias automáticas encontradas</h3><div id="bkLista"><p class="muted">Carregando…</p></div>
+    <h3 style="margin-top:18px">Cópias automáticas encontradas</h3><div id="bkLista"><p class="muted">Procurando suas cópias…</p></div>
     <p class="muted small">Ao restaurar, os dados atuais são guardados antes numa cópia chamada <i>antes-de-restaurar</i>, na mesma pasta.</p></section>`;
 };
 function desenharBackup(c) {
@@ -71,7 +71,7 @@ function desenharBackup(c) {
     <label>Quantas cópias guardar<input id="bkManter" type="number" min="1" max="365" value="${c.manter}"></label></div>
     <p><b>Pasta das cópias:</b> <code>${esc(c.backupDir)}</code></p>
     <div class="row-btn"><button class="btn" data-act="bkEscolher">Escolher pasta…</button><button class="btn" data-act="bkAbrir">Abrir pasta</button><button class="btn primary" data-act="bkAgora">Fazer cópia agora</button></div>
-    <p class="${c.ultimoErro ? 'bad' : 'muted'}" style="margin-bottom:0">${c.ultimoErro ? '⚠ A última tentativa falhou: ' + esc(c.ultimoErro) + '. Confira se a pasta ou o pen drive está disponível.' : 'Última cópia: ' + dataHora(c.ultimo)}</p>
+    <p class="${c.ultimoErro ? 'bad' : 'muted'}" style="margin-bottom:0">${c.ultimoErro ? icon('alert') + ' A última tentativa falhou: ' + esc(c.ultimoErro) + '. Confira se a pasta ou o pen drive está disponível.' : 'Última cópia: ' + dataHora(c.ultimo)}</p>
     <p class="muted small">Só é criada uma cópia nova quando houve alteração nos dados. Num computador emprestado, escolha como pasta um pen drive ou a pasta do Google Drive ou OneDrive, para os dados saírem junto com ela.</p>`;
   $('#bkFreq').onchange = async (e) => desenharBackup(await api.setSettings({ frequencia: e.target.value }));
   $('#bkManter').onchange = async (e) => desenharBackup(await api.setSettings({ manter: e.target.value }));
@@ -80,7 +80,7 @@ async function carregarCopias() {
   const box = $('#bkLista'); if (!box) return;
   const l = await api.listBackups();
   box.innerHTML = l.length ? `<table class="t"><tbody>${l.map((f) => `<tr><td>${dataHora(f.mtime)}</td><td class="muted small">${esc(f.name)}</td><td class="r muted small">${num(f.size / 1024, 0)} KB</td><td class="r"><button class="btn sm" data-act="bkRestaurar" data-name="${esc(f.name)}">Restaurar esta</button></td></tr>`).join('')}</tbody></table>`
-    : '<p class="empty">Nenhuma cópia na pasta escolhida ainda.</p>';
+    : '<p class="empty">Ainda não há cópias nesta pasta. Clique em "Fazer cópia agora" para criar a primeira.</p>';
 }
 views.configAfter = function () {
   const f = $('#cfgForm');
@@ -90,28 +90,28 @@ views.configAfter = function () {
     e.preventDefault();
     const o = formData(f), n = (k) => parseFloat(o[k]) || 0;
     Object.assign(S.config, { loja: o.loja.trim() || 'Meu Ateliê', telefone: o.telefone, rodapePedido: o.rodapePedido, salario: n('salario'), dias: n('dias') || 22, horas: n('horas') || 8, custoFixo: n('custoFixo'), margemAtacado: n('margemAtacado'), margemVarejo: n('margemVarejo') });
-    save(); toast('Configurações salvas.'); render();
+    save(); toast('Pronto! Configurações salvas.'); render();
   });
   $('#logoArquivo').addEventListener('change', async (e) => {
     const file = e.target.files[0]; e.target.value = '';
     if (!file || !file.type.startsWith('image/')) return toast('Escolha um arquivo de imagem (PNG ou JPG).');
-    try { S.config.logo = await redimensionar(file, 320, true); save(); aplicarLogo(); toast('Logo atualizada.'); render(); } catch (err) { toast('Não consegui abrir essa imagem. Tente PNG ou JPG.'); }
+    try { S.config.logo = await redimensionar(file, 320, true); save(); aplicarLogo(); toast('Pronto! Sua logo já está no programa.'); render(); } catch (err) { toast('Não consegui abrir essa imagem. Tente PNG ou JPG.'); }
   });
   api.getSettings().then(desenharBackup); carregarCopias();
 };
 actions.rmLogo = () => { delete S.config.logo; save(); aplicarLogo(); toast('Logo removida.'); render(); };
 actions.bkEscolher = async () => { const d = await api.chooseBackupDir(); if (d) { desenharBackup(await api.setSettings({ backupDir: d })); carregarCopias(); toast('Pasta alterada.'); } };
 actions.bkAbrir = () => api.openBackupFolder();
-actions.bkAgora = async () => { const r = await api.backupNow(); if (r.config) desenharBackup(r.config); toast(r.ok ? 'Cópia feita.' : 'Não foi possível: ' + (r.erro || 'erro')); carregarCopias(); };
-actions.exportar = async () => { if (await api.exportBackup()) toast('Cópia salva.'); };
+actions.bkAgora = async () => { const r = await api.backupNow(); if (r.config) desenharBackup(r.config); toast(r.ok ? 'Pronto! Cópia feita.' : 'Não foi possível: ' + (r.erro || 'erro')); carregarCopias(); };
+actions.exportar = async () => { if (await api.exportBackup()) toast('Pronto! Cópia salva.'); };
 
 // Troca todos os dados pelos de uma cópia, guardando antes uma cópia dos atuais.
 function aplicarRestauracao(d) {
-  if (!d || !d.config || !Array.isArray(d.pedidos)) return toast('Este arquivo não parece ser uma cópia do programa.');
+  if (!d || !d.config || !Array.isArray(d.pedidos)) return toast('Esse arquivo não parece ser uma cópia do programa. Confira se escolheu o arquivo certo.');
   confirmar('Substituir TODOS os dados atuais por esta cópia? Os dados de agora ficam guardados numa cópia "antes-de-restaurar".', async () => {
     await api.safetyCopy();
     S = migrate(d); S.config.bemVinda = true; ui.draft = null; await save(); aplicarLogo();
-    toast('Dados restaurados.'); go('painel'); carregarCopias();
+    toast('Pronto! Seus dados voltaram.'); go('painel'); carregarCopias();
   }, 'Restaurar');
 }
 actions.restaurar = async () => aplicarRestauracao(await api.importBackup());

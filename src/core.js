@@ -58,7 +58,7 @@ function save() {
   const el = document.getElementById('saveState');
   el.textContent = 'Salvando…';
   const json = JSON.parse(JSON.stringify(S));
-  saving = saving.then(() => api.save(json)).then(() => { el.textContent = 'Tudo salvo'; }).catch(() => { el.textContent = '⚠ Erro ao salvar'; });
+  saving = saving.then(() => api.save(json)).then(() => { el.textContent = 'Tudo salvo'; }).catch(() => { el.textContent = 'Não foi possível salvar'; });
   return saving;
 }
 
@@ -106,7 +106,7 @@ const thumb = (foto, nome = '', tam = '') => foto
   : `<span class="thumb ph ${tam}">${esc((String(nome).trim().charAt(0) || '?').toUpperCase())}</span>`;
 const campoFoto = (foto, nome, rotulo = 'Foto do produto') => `<div class="foto-campo"><div class="foto-prev">${thumb(foto, nome, 'lg')}</div>
   <div class="foto-ctl"><b>${rotulo}</b><input type="hidden" name="foto" value="${esc(foto || '')}">
-  <label class="btn sm filebtn">📷 Escolher foto<input type="file" accept="image/*" hidden id="fotoArquivo"></label><button type="button" class="btn sm" data-act="rmFoto">Remover</button>
+  <label class="btn sm filebtn">${icon('camera')} Escolher foto<input type="file" accept="image/*" hidden id="fotoArquivo"></label><button type="button" class="btn sm" data-act="rmFoto">Remover</button>
   <small class="muted">Também dá para arrastar a imagem para esta janela ou colar com Ctrl+V.</small></div></div>`;
 function ligarFoto(form) {
   const hid = $('[name=foto]', form), prev = $('.foto-prev', form);
@@ -140,15 +140,17 @@ const formData = (form) => {
 };
 
 // Janela de formulário. onSubmit(dados) devolve false para manter aberta.
+let modalSeq = 0;
 function openModal({ title, body, onSubmit, wide = false, submit = 'Salvar', onOpen }) {
+  const antes = document.activeElement, tid = 'modalTitulo' + (++modalSeq);
   const ov = document.createElement('div');
   ov.className = 'overlay';
-  ov.innerHTML = `<form class="modal ${wide ? 'wide' : ''}"><header><h2>${esc(title)}</h2><button type="button" class="x" data-close>×</button></header>
+  ov.innerHTML = `<form class="modal ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="${tid}"><header><h2 id="${tid}">${esc(title)}</h2><button type="button" class="x" data-close aria-label="Fechar">×</button></header>
     <div class="modal-body">${body}</div>
     <footer><button type="button" class="btn ghost" data-close>${onSubmit ? 'Cancelar' : 'Fechar'}</button>${onSubmit ? `<button class="btn primary">${submit}</button>` : ''}</footer></form>`;
   document.body.appendChild(ov);
   const form = $('form', ov);
-  const close = () => ov.remove();
+  const close = () => { ov.remove(); if (antes && antes.isConnected && antes.focus) antes.focus(); };
   ov.addEventListener('mousedown', (e) => { if (e.target === ov) ov._down = true; });
   ov.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) close(); });
   form.addEventListener('submit', async (e) => {
@@ -171,14 +173,37 @@ document.addEventListener('click', (e) => {
   if (el && actions[el.dataset.act]) { e.preventDefault(); actions[el.dataset.act](el.dataset, el); }
 });
 
+// ---------- ícones próprios (traço), no lugar de emojis ----------
+const ICON = {
+  home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
+  image: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="1.8"/><path d="M21 16l-5-5-8 8"/>',
+  receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+  users: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M16.5 14.2c2.9.3 4.5 2.3 4.5 5.3"/>',
+  shirt: '<path d="M8 3L3 6l2 4 3-1v11h8V9l3 1 2-4-5-3c-.5 1.5-2 2.5-4 2.5S8.5 4.5 8 3z"/>',
+  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v8h14v-8"/><path d="M12 8C9.5 4 6 4.5 6.5 6.8 6.9 8.4 9.5 8 12 8zm0 0c2.5-4 6-3.5 5.5-1.2-.4 1.6-3 1.2-5.5 1.200z"/>',
+  spool: '<ellipse cx="12" cy="5.5" rx="7" ry="2.5"/><ellipse cx="12" cy="18.5" rx="7" ry="2.5"/><path d="M5 5.500v13M19 5.500v13M5 10c4 2 10 2 14 0M5 14.500c4 2 10 2 14 0"/>',
+  wallet: '<rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18"/><circle cx="16.5" cy="14.5" r="1.3"/>',
+  sliders: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  camera: '<path d="M4 8h3l1.5-2.500h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.4"/>',
+  scissors: '<circle cx="6" cy="6.5" r="2.7"/><circle cx="6" cy="17.5" r="2.7"/><path d="M8.2 8.100L20 19M8.2 15.900L20 5"/>',
+  printer: '<path d="M7 9V3h10v6M7 17H4v-7h16v7h-3"/><rect x="7" y="14" width="10" height="7"/>',
+  copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+  alert: '<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.200v.1"/>',
+  check: '<path d="M5 12.500l4.5 4.500L19 7.5"/>',
+};
+const icon = (n) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICON[n] || ''}</svg>`;
+// Estado vazio: explica e já oferece o próximo passo.
+const vazio = (titulo, texto, acao, rotulo, view) => `<div class="vazio"><span class="vazio-ic">${icon('image')}</span><b>${esc(titulo)}</b><p>${esc(texto)}</p>${acao ? `<button type="button" class="btn primary" data-act="${acao}"${view ? ` data-view="${view}"` : ''}>${esc(rotulo)}</button>` : ''}</div>`;
+
 const views = {};
 const aplicarLogo = () => api.setIcon(S.config.logo || '');
 function render() {
   $('#brandName').textContent = S.config.loja;
   const lg = $('.brand .logo'), logo = S.config.logo;
-  lg.classList.toggle('img', !!logo); lg.innerHTML = logo ? `<img src="${esc(logo)}" alt="">` : '✂';
+  lg.classList.toggle('img', !!logo); lg.innerHTML = logo ? `<img src="${esc(logo)}" alt="">` : icon('scissors');
   document.title = S.config.loja;
-  $$('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.view === ui.view));
+  $$('#nav button').forEach((b) => { const on = b.dataset.view === (ui.view === 'pedido' ? 'pedidos' : ui.view); b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   const v = views[ui.view];
   $('#main').innerHTML = v();
   window.scrollTo(0, 0);
@@ -216,3 +241,16 @@ function sincronizarEstoque(p) {
     ajustarEstoque(p.baixa, -1);
   }
 }
+
+// Teclado nas janelas: Esc fecha; Tab fica dentro da janela aberta.
+document.addEventListener('keydown', (e) => {
+  const ov = $$('.overlay').pop();
+  if (!ov) return;
+  if (e.key === 'Escape') { const x = $('[data-close]', ov); if (x) { e.preventDefault(); x.click(); } return; }
+  if (e.key !== 'Tab') return;
+  const f = $$('button:not([disabled]),input:not([type=hidden]):not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])', ov).filter((el) => el.offsetParent !== null);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if (!ov.contains(document.activeElement) || (e.shiftKey && document.activeElement === first)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});

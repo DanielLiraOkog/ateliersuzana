@@ -29,7 +29,7 @@ views.catalogo = function () {
   const tab = ui.catTab || 'produtos', tipoPreco = ui.catPreco || 'varejo', cat = ui.catCat || 'todas', so = !!ui.catSo, q = norm(ui.busca);
   const tabs = `<div class="chips"><button class="chip ${tab === 'produtos' ? 'on' : ''}" data-act="catTab" data-t="produtos">Produtos</button><button class="chip ${tab === 'estampas' ? 'on' : ''}" data-act="catTab" data-t="estampas">Estampas e tecidos</button><button class="chip ${tab === 'kits' ? 'on' : ''}" data-act="catTab" data-t="kits">Kits</button></div>`;
   let corpo = '';
-  const controles = [`<input class="search" id="busca" placeholder="Buscar…" value="${esc(ui.busca)}">`];
+  const controles = [`<input class="search" id="busca" placeholder="Buscar…" value="${esc(ui.busca)}" aria-label="Buscar">`];
   if (tab === 'produtos') {
     const cats = [...new Set(catProdutos().map((p) => p.categoria).filter(Boolean))].sort();
     let lista = catProdutos().filter((p) => (cat === 'todas' || p.categoria === cat) && (!q || norm(p.nome + p.categoria + p.codigo).includes(q)));
@@ -42,7 +42,7 @@ views.catalogo = function () {
       return `<article class="cat-card" tabindex="0" data-act="catAbrir" data-id="${p.id}"><div class="cat-foto">${thumb(p.foto, p.nome, 'xl')}${tagDisp(d)}</div>
         <div class="cat-info"><b>${esc(p.nome)}</b><span class="muted small">${esc([p.codigo, p.categoria].filter(Boolean).join(' · '))}</span>
         <span class="cat-preco">${money(pr[tipoPreco])}<small>${tipoPreco}</small></span></div></article>`;
-    }).join('')}</div>` : `<p class="empty big">${S.produtos.length ? 'Nenhum produto com esses filtros.' : 'Cadastre produtos com foto para montar o catálogo.'}</p>`;
+    }).join('')}</div>` : `${S.produtos.length ? vazio('Nada com esses filtros', 'Troque a categoria ou limpe a busca.') : vazio('O catálogo ainda está vazio', 'Cadastre produtos com foto e eles aparecem aqui, grandes e prontos para mostrar.', 'navTo', 'Ir para Produtos', 'produtos')}`;
   } else if (tab === 'kits') {
     const oc = ui.catOc || 'todas', ocs = [...new Set(catKits().map((k) => k.ocasiao).filter(Boolean))].sort();
     let lista = catKits().filter((k) => (oc === 'todas' || k.ocasiao === oc) && (!q || norm(k.nome + ' ' + k.ocasiao).includes(q)));
@@ -50,7 +50,7 @@ views.catalogo = function () {
     lista.sort((a, b) => (a.ocasiao || '').localeCompare(b.ocasiao || '') || a.nome.localeCompare(b.nome));
     ui.catLista = lista.map((k) => k.id);
     controles.push(`<div class="chips">${[['todas', 'Todos'], ...ocs.map((o) => [o, o])].map(([k, t]) => `<button class="chip ${oc === k ? 'on' : ''}" data-act="catOc" data-o="${esc(k)}">${esc(t)}</button>`).join('')}</div>`);
-    corpo = lista.length ? `<div class="cat-grid">${lista.map((k) => cardKit(k, 'catAbrirKit', tipoPreco)).join('')}</div>` : `<p class="empty big">${S.kits.length ? 'Nenhum kit com esses filtros.' : 'Monte kits na aba Kits para aparecerem aqui.'}</p>`;
+    corpo = lista.length ? `<div class="cat-grid">${lista.map((k) => cardKit(k, 'catAbrirKit', tipoPreco)).join('')}</div>` : `${S.kits.length ? vazio('Nenhum kit com esses filtros', 'Troque a ocasião ou limpe a busca.') : vazio('Nenhum kit no catálogo ainda', 'Monte um kit e ele aparece aqui.', 'navTo', 'Ir para Kits', 'kits')}`;
   } else {
     const lista = S.materiais.filter((m) => m.tipo === 'tecido' && (!q || norm(m.nome).includes(q))).sort((a, b) => a.nome.localeCompare(b.nome));
     ui.catLista = lista.map((m) => m.id);
@@ -58,7 +58,7 @@ views.catalogo = function () {
       const sem = m.estoque <= 0, baixo = m.minimo > 0 && m.estoque <= m.minimo;
       return `<article class="cat-card" tabindex="0" data-act="catAbrirEst" data-id="${m.id}"><div class="cat-foto">${thumb(m.foto, m.nome, 'xl')}${sem ? '<span class="disp bad">Sem estoque</span>' : baixo ? '<span class="disp warn">Pouco</span>' : ''}</div>
         <div class="cat-info"><b>${esc(m.nome)}</b><span class="muted small">${num(m.estoque)} ${esc(m.unidade)} em estoque</span><span class="cat-preco">${money(m.custo)}<small>/ ${esc(m.unidade)}</small></span></div></article>`;
-    }).join('')}</div>` : '<p class="empty big">Cadastre tecidos (com foto da estampa) em Materiais.</p>';
+    }).join('')}</div>` : vazio('Nenhuma estampa cadastrada', 'Cadastre os tecidos com a foto da estampa e eles aparecem aqui.', 'navTo', 'Ir para Materiais', 'materiais');
   }
   controles.push(`<div class="chips"><button class="chip ${tipoPreco === 'varejo' ? 'on' : ''}" data-act="catPreco" data-p="varejo">Varejo</button><button class="chip ${tipoPreco === 'atacado' ? 'on' : ''}" data-act="catPreco" data-p="atacado">Atacado</button></div>`);
   if (tab !== 'estampas') controles.push(`<button class="chip ${so ? 'on' : ''}" data-act="catSo">Só o que dá para fazer</button>`);
@@ -135,7 +135,7 @@ function renderDetalhe() {
       <div class="det-info"><div><h3>${esc(m.nome)}</h3><span class="muted">${esc(m.fornecedor || 'Fornecedor não informado')}</span></div>
       <div class="precos"><div><span>Em estoque</span><b>${num(m.estoque)} ${esc(m.unidade)}</b></div><div><span>Custo</span><b>${money(m.custo)}/${esc(m.unidade)}</b></div></div>
       <div><b class="small">O que dá para fazer com esta estampa</b>
-      ${uso.length ? `<div class="uso">${uso.map(({ p, d }) => `<button type="button" class="uso-i" data-act="catProdEst" data-id="${p.id}" data-tec="${m.id}">${thumb(p.foto, p.nome)}<span><b>${esc(p.nome)}</b><small class="muted">até ${d.qtd} peça(s) · ${money(precosProduto(p, m.id)[ui.catPreco || 'varejo'])}</small></span></button>`).join('')}</div>` : '<p class="empty">Estoque insuficiente para os produtos cadastrados.</p>'}</div>
+      ${uso.length ? `<div class="uso">${uso.map(({ p, d }) => `<button type="button" class="uso-i" data-act="catProdEst" data-id="${p.id}" data-tec="${m.id}">${thumb(p.foto, p.nome)}<span><b>${esc(p.nome)}</b><small class="muted">até ${d.qtd} peça(s) · ${money(precosProduto(p, m.id)[ui.catPreco || 'varejo'])}</small></span></button>`).join('')}</div>` : '<p class="empty">O estoque de agora não dá para fazer nenhum produto com esta estampa.</p>'}</div>
       <div class="row-btn"><button type="button" class="btn" data-act="catEditarMat">Editar material</button></div>${nav}</div></div>`;
   }
 }

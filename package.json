@@ -1,7 +1,7 @@
 {
   "name": "atelier-suzana-lira",
   "productName": "Atelier Suzana Lira",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Gestão do Atelier Suzana Lira: produtos, materiais, pedidos e finanças",
   "main": "main.js",
   "author": "Atelier Suzana Lira",

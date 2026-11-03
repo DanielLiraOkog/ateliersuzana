@@ -216,5 +216,6 @@ actions.editarProduto = (d) => formProduto(byId(S.produtos, d.id));
 actions.duplicarProduto = (d) => formProduto(byId(S.produtos, d.id), true);
 actions.excluirProduto = (d) => {
   if (S.pedidos.some((o) => o.itens.some((i) => i.produtoId === Number(d.id)))) return toast('Este produto já foi usado em pedidos e não pode ser excluído.');
+  if (S.kits.some((k) => k.itens.some((i) => Number(i.produtoId) === Number(d.id)))) return toast('Este produto faz parte de um kit. Tire-o do kit antes de excluir.');
   confirmar('Excluir este produto?', () => { S.produtos = S.produtos.filter((p) => p.id !== Number(d.id)); save(); $$('.overlay').forEach((o) => o.remove()); render(); });
 };

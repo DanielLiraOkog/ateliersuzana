@@ -1,6 +1,7 @@
 // ================= CATÁLOGO =================
 // Vitrine só para ela: navegar pelas fotos, ver preço e o que dá para fazer com o estoque atual.
 const catProdutos = () => S.produtos.filter((p) => p.catalogo !== false);
+const catKits = () => S.kits.filter((k) => k.catalogo !== false);
 
 // Quantas peças dá para fazer com o estoque (limitada pelo material mais escasso).
 function disponibilidade(p, tecidoId) {
@@ -26,7 +27,7 @@ const precosProduto = (p, tecidoId) => {
 
 views.catalogo = function () {
   const tab = ui.catTab || 'produtos', tipoPreco = ui.catPreco || 'varejo', cat = ui.catCat || 'todas', so = !!ui.catSo, q = norm(ui.busca);
-  const tabs = `<div class="chips"><button class="chip ${tab === 'produtos' ? 'on' : ''}" data-act="catTab" data-t="produtos">Produtos</button><button class="chip ${tab === 'estampas' ? 'on' : ''}" data-act="catTab" data-t="estampas">Estampas e tecidos</button></div>`;
+  const tabs = `<div class="chips"><button class="chip ${tab === 'produtos' ? 'on' : ''}" data-act="catTab" data-t="produtos">Produtos</button><button class="chip ${tab === 'estampas' ? 'on' : ''}" data-act="catTab" data-t="estampas">Estampas e tecidos</button><button class="chip ${tab === 'kits' ? 'on' : ''}" data-act="catTab" data-t="kits">Kits</button></div>`;
   let corpo = '';
   const controles = [`<input class="search" id="busca" placeholder="Buscar…" value="${esc(ui.busca)}">`];
   if (tab === 'produtos') {
@@ -42,6 +43,14 @@ views.catalogo = function () {
         <div class="cat-info"><b>${esc(p.nome)}</b><span class="muted small">${esc([p.codigo, p.categoria].filter(Boolean).join(' · '))}</span>
         <span class="cat-preco">${money(pr[tipoPreco])}<small>${tipoPreco}</small></span></div></article>`;
     }).join('')}</div>` : `<p class="empty big">${S.produtos.length ? 'Nenhum produto com esses filtros.' : 'Cadastre produtos com foto para montar o catálogo.'}</p>`;
+  } else if (tab === 'kits') {
+    const oc = ui.catOc || 'todas', ocs = [...new Set(catKits().map((k) => k.ocasiao).filter(Boolean))].sort();
+    let lista = catKits().filter((k) => (oc === 'todas' || k.ocasiao === oc) && (!q || norm(k.nome + ' ' + k.ocasiao).includes(q)));
+    if (so) lista = lista.filter((k) => disponibilidadeKit(k).qtd !== 0);
+    lista.sort((a, b) => (a.ocasiao || '').localeCompare(b.ocasiao || '') || a.nome.localeCompare(b.nome));
+    ui.catLista = lista.map((k) => k.id);
+    controles.push(`<div class="chips">${[['todas', 'Todos'], ...ocs.map((o) => [o, o])].map(([k, t]) => `<button class="chip ${oc === k ? 'on' : ''}" data-act="catOc" data-o="${esc(k)}">${esc(t)}</button>`).join('')}</div>`);
+    corpo = lista.length ? `<div class="cat-grid">${lista.map((k) => cardKit(k, 'catAbrirKit', tipoPreco)).join('')}</div>` : `<p class="empty big">${S.kits.length ? 'Nenhum kit com esses filtros.' : 'Monte kits na aba Kits para aparecerem aqui.'}</p>`;
   } else {
     const lista = S.materiais.filter((m) => m.tipo === 'tecido' && (!q || norm(m.nome).includes(q))).sort((a, b) => a.nome.localeCompare(b.nome));
     ui.catLista = lista.map((m) => m.id);
@@ -52,13 +61,14 @@ views.catalogo = function () {
     }).join('')}</div>` : '<p class="empty big">Cadastre tecidos (com foto da estampa) em Materiais.</p>';
   }
   controles.push(`<div class="chips"><button class="chip ${tipoPreco === 'varejo' ? 'on' : ''}" data-act="catPreco" data-p="varejo">Varejo</button><button class="chip ${tipoPreco === 'atacado' ? 'on' : ''}" data-act="catPreco" data-p="atacado">Atacado</button></div>`);
-  if (tab === 'produtos') controles.push(`<button class="chip ${so ? 'on' : ''}" data-act="catSo">Só o que dá para fazer</button>`);
+  if (tab !== 'estampas') controles.push(`<button class="chip ${so ? 'on' : ''}" data-act="catSo">Só o que dá para fazer</button>`);
   return `<div class="page-head"><h1>Catálogo</h1>${tabs}</div><div class="cat-bar">${controles.join('')}</div>${corpo}`;
 };
 views.catalogoAfter = views.pedidosAfter;
 actions.catTab = (d) => { ui.catTab = d.t; ui.busca = ''; render(); };
 actions.catCat = (d) => { ui.catCat = d.c; render(); };
 actions.catPreco = (d) => { ui.catPreco = d.p; render(); };
+actions.catOc = (d) => { ui.catOc = d.o; render(); };
 actions.catSo = () => { ui.catSo = !ui.catSo; render(); };
 
 // ---------- janela de detalhe (foto grande) ----------
@@ -69,6 +79,7 @@ function abrirDetalhe(tipo, id, tec) {
 }
 actions.catAbrir = (d) => abrirDetalhe('p', d.id);
 actions.catAbrirEst = (d) => abrirDetalhe('e', d.id);
+actions.catAbrirKit = (d) => abrirDetalhe('k', d.id);
 actions.catEstampa = (d) => { ui.catSel.tec = d.id ? Number(d.id) : ''; renderDetalhe(); };
 actions.catNav = (d) => {
   const l = ui.catLista || [], i = l.indexOf(ui.catSel.id);
@@ -103,6 +114,19 @@ function renderDetalhe() {
       ${p.obs ? `<p class="muted">${esc(p.obs)}</p>` : ''}
       <div class="row-btn"><button type="button" class="btn primary" data-act="catPedido">+ Criar pedido com este produto</button><button type="button" class="btn" data-act="catEditar">Editar produto</button></div>
       ${nav}</div></div>`;
+  } else if (sel.tipo === 'k') {
+    const k = byId(S.kits, sel.id); if (!k) return;
+    const c = Calc.custoKit(S, k), d = disponibilidadeKit(k);
+    $('.modal h2').textContent = k.nome;
+    box.innerHTML = `<div class="detalhe"><div class="det-foto">${kitThumb(k, 'xl')}</div>
+      <div class="det-info"><div><h3>${esc(k.nome)}</h3><span class="muted">${esc(k.ocasiao || '')}</span></div>
+      <div class="precos"><div><span>Atacado</span><b>${money(c.atacado)}</b></div><div><span>Varejo</span><b>${money(c.varejo)}</b></div></div>
+      <div>${tagDisp(d).replace('class="disp', 'class="disp inline')} ${d.qtd === 0 && d.falta ? `<span class="muted small">Falta: ${esc(d.falta.nome)}</span>` : ''}
+      ${c.economiaPct > 0 ? `<div class="small good" style="margin-top:6px">Cliente economiza ${num(c.economiaPct, 1)}% (separados: ${money(c.avulsoVarejo)})</div>` : ''}</div>
+      <div><b class="small">O que vai no kit</b><div class="uso">${k.itens.map((i) => { const p = byId(S.produtos, i.produtoId); if (!p) return ''; const t = byId(S.materiais, i.tecidoId);
+        return `<div class="uso-i static">${thumb(p.foto, p.nome)}<span><b>${i.qtd}× ${esc(p.nome)}</b><small class="muted">${esc(t ? t.nome : 'tecido padrão')}</small></span></div>`; }).join('')}</div></div>
+      ${k.obs ? `<p class="muted">${esc(k.obs)}</p>` : ''}
+      <div class="row-btn"><button type="button" class="btn primary" data-act="catPedido">+ Criar pedido com este kit</button><button type="button" class="btn" data-act="catEditarKit">Editar kit</button></div>${nav}</div></div>`;
   } else {
     const m = byId(S.materiais, sel.id); if (!m) return;
     $('.modal h2').textContent = m.nome;
@@ -118,7 +142,9 @@ function renderDetalhe() {
 actions.catProdEst = (d) => { ui.catLista = []; abrirDetalhe('p', d.id, d.tec); };
 actions.catEditar = () => { const p = byId(S.produtos, ui.catSel.id); fecharModais(); formProduto(p); };
 actions.catEditarMat = () => { const m = byId(S.materiais, ui.catSel.id); fecharModais(); formMaterial(m); };
+actions.catEditarKit = () => { const k = byId(S.kits, ui.catSel.id); fecharModais(); formKit(k); };
 actions.catPedido = () => {
+  if (ui.catSel.tipo === 'k') return pedidoComItem({ kitId: ui.catSel.id, produtoId: '', tecidoId: '', descricao: '', qtd: 1, tipoPreco: ui.catPreco || 'varejo', preco: 0, custo: 0, auto: true });
   const p = byId(S.produtos, ui.catSel.id);
   const item = { produtoId: p.id, tecidoId: ui.catSel.tec || '', descricao: '', qtd: 1, tipoPreco: ui.catPreco || 'varejo', preco: 0, custo: 0, auto: true };
   Object.assign(item, precoSugerido(item));

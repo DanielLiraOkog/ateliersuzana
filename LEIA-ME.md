@@ -16,3 +16,7 @@ com cópia automática diária em `backups\` (últimos 30 dias).
 - Configurações → Cópia de segurança automática: frequência (ao abrir/fechar, 1 h, 6 h, diária, semanal), quantidade de cópias e pasta de destino (pen drive, Drive, OneDrive).
 - As preferências ficam em `Documentos\Atelier Suzana Lira\config-app.json` (por computador). Os dados ficam em `dados.json`.
 - Trocar de computador: salvar cópia em arquivo no antigo e restaurar no novo (ou escolher uma cópia automática). Os dados atuais são guardados antes como `antes-de-restaurar-*.json`.
+
+## Kits
+- Menu Kits: junte vários produtos (com tecido/estampa por item) para Natal, Dia das Mães, sorteio ou promoção. Custo = produtos + embalagem + tempo de montagem; preço pela margem do kit ou preço fixo de varejo.
+- Kits entram nos pedidos (o estoque baixa pelos materiais de cada produto do kit) e aparecem no Catálogo (aba Kits). Sem foto própria, mostram um mosaico das fotos dos produtos.

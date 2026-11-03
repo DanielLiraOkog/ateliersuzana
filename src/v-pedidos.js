@@ -29,15 +29,17 @@ actions.novoPedido = () => {
 actions.abrirPedido = (d) => { ui.draft = JSON.parse(JSON.stringify(byId(S.pedidos, d.id))); go('pedido'); };
 
 // ---------- editor de pedido ----------
-const opcoesProdutos = () => [['', '— escolha o produto —'], ...S.produtos.map((p) => [p.id, p.nome])];
+const opcoesProdutos = () => [['', '— escolha o produto ou kit —'], ...S.produtos.map((p) => [p.id, p.nome]), ...S.kits.map((k) => ['k' + k.id, '🎁 Kit: ' + k.nome])];
+const nomeItem = (i) => { if (i.kitId) { const k = byId(S.kits, i.kitId); return k ? 'Kit: ' + k.nome : 'Kit removido'; } const p = byId(S.produtos, i.produtoId); return p ? p.nome : ''; };
+const thumbItem = (i) => { if (i.kitId) { const k = byId(S.kits, i.kitId); return k ? kitThumb(k) : thumb('', '?'); } const p = byId(S.produtos, i.produtoId); return thumb(p && p.foto, p && p.nome); };
 const opcoesTecidos = () => [['', 'tecido padrão do produto'], ...S.materiais.filter((m) => m.tipo === 'tecido').map((m) => [m.id, m.nome])];
 
 function linhaItem(i, idx) {
   const p = byId(S.produtos, i.produtoId);
   return `<tr data-idx="${idx}">
-    <td class="it-th th">${thumb(p && p.foto, p && p.nome)}</td>
-    <td>${F.select('produtoId', '', opcoesProdutos(), i.produtoId, 'class="it-prod"').replace('<label>', '<label class="bare">')}</td>
-    <td>${F.select('tecidoId', '', opcoesTecidos(), i.tecidoId || '', 'class="it-tec"').replace('<label>', '<label class="bare">')}</td>
+    <td class="it-th th">${thumbItem(i)}</td>
+    <td>${F.select('produtoId', '', opcoesProdutos(), i.kitId ? 'k' + i.kitId : i.produtoId, 'class="it-prod"').replace('<label>', '<label class="bare">')}</td>
+    <td>${F.select('tecidoId', '', opcoesTecidos(), i.tecidoId || '', 'class="it-tec"' + (i.kitId ? ' disabled' : '')).replace('<label>', '<label class="bare">')}</td>
     <td><input class="it-desc" placeholder="cor, tamanho, detalhes" value="${esc(i.descricao || '')}"></td>
     <td><input class="it-qtd w60" type="number" min="1" step="1" value="${i.qtd}"></td>
     <td><select class="it-tipo w90"><option value="atacado" ${i.tipoPreco === 'atacado' ? 'selected' : ''}>Atacado</option><option value="varejo" ${i.tipoPreco !== 'atacado' ? 'selected' : ''}>Varejo</option></select></td>
@@ -47,6 +49,12 @@ function linhaItem(i, idx) {
 }
 
 function precoSugerido(item) {
+  if (item.kitId) {
+    const k = byId(S.kits, item.kitId);
+    if (!k) return { custo: 0, preco: 0 };
+    const c = Calc.custoKit(S, k);
+    return { custo: c.total, preco: item.tipoPreco === 'atacado' ? c.atacado : c.varejo };
+  }
   const p = byId(S.produtos, item.produtoId);
   if (!p) return { custo: 0, preco: 0 };
   const custo = Calc.custoProduto(S, p, item.tecidoId).total;
@@ -97,8 +105,10 @@ function lerPedidoDaTela() {
   d.obs = $('#valores [name=obs]').value;
   $$('#itens tr').forEach((tr) => {
     const it = d.itens[tr.dataset.idx];
-    it.produtoId = $('.it-prod', tr).value ? Number($('.it-prod', tr).value) : '';
-    it.tecidoId = $('.it-tec', tr).value ? Number($('.it-tec', tr).value) : '';
+    const sel = $('.it-prod', tr).value;
+    it.kitId = sel.startsWith('k') ? Number(sel.slice(1)) : '';
+    it.produtoId = sel && !it.kitId ? Number(sel) : '';
+    it.tecidoId = $('.it-tec', tr).value && !it.kitId ? Number($('.it-tec', tr).value) : '';
     it.descricao = $('.it-desc', tr).value;
     it.qtd = Math.max(1, parseInt($('.it-qtd', tr).value) || 1);
     it.tipoPreco = $('.it-tipo', tr).value;
@@ -128,7 +138,7 @@ function pedidoInput(e) {
   lerPedidoDaTela();
   if (tr) {
     const it = ui.draft.itens[tr.dataset.idx];
-    if (e.target.matches('.it-prod')) { const pr = byId(S.produtos, it.produtoId); $('.it-th', tr).innerHTML = thumb(pr && pr.foto, pr && pr.nome); }
+    if (e.target.matches('.it-prod')) { $('.it-th', tr).innerHTML = thumbItem(it); $('.it-tec', tr).disabled = !!it.kitId; if (it.kitId) $('.it-tec', tr).value = ''; }
     if (e.target.matches('.it-prod,.it-tec,.it-tipo')) { it.auto = true; recalcularLinha(tr, true); lerPedidoDaTela(); }
     if (e.target.matches('.it-preco')) it.auto = false;
   }
@@ -156,7 +166,7 @@ actions.salvarPedido = () => {
   const d = ui.draft;
   if (!d.clienteId) return toast('Escolha o cliente.');
   if (!d.itens.length) return toast('Adicione ao menos um item.');
-  if (d.itens.some((i) => !i.produtoId)) return toast('Há item sem produto escolhido.');
+  if (d.itens.some((i) => !i.produtoId && !i.kitId)) return toast('Há item sem produto ou kit escolhido.');
   d.itens.forEach((i) => delete i.auto);
   if (!d.id) { d.id = nextId('pedido'); d.numero = nextId('numeroPedido'); S.pedidos.push(d); }
   else S.pedidos[S.pedidos.findIndex((p) => p.id === d.id)] = d;
@@ -181,8 +191,9 @@ actions.imprimirPedido = async () => {
     <p><b>Cliente:</b> ${esc(c.nome || '')}${c.telefone ? ' · ' + esc(c.telefone) : ''}<br>${c.endereco ? '<b>Endereço:</b> ' + esc(c.endereco) + '<br>' : ''}
     <b>Data:</b> ${dataBR(d.data)}${d.entrega ? ' · <b>Entrega prevista:</b> ' + dataBR(d.entrega) : ''}</p>
     <table><thead><tr><th></th><th>Produto</th><th>Detalhes</th><th>Qtd</th><th>Valor un.</th><th>Total</th></tr></thead><tbody>
-    ${d.itens.map((i) => { const p = byId(S.produtos, i.produtoId) || {}; const t = byId(S.materiais, i.tecidoId);
-      return `<tr><td>${p.foto ? `<img src="${esc(p.foto)}" alt="">` : ''}</td><td>${esc(p.nome)}</td><td>${esc([t && t.nome, i.descricao].filter(Boolean).join(' · '))}</td><td>${i.qtd}</td><td>${money(i.preco)}</td><td>${money(i.qtd * i.preco)}</td></tr>`; }).join('')}
+    ${d.itens.map((i) => { const p = byId(S.produtos, i.produtoId) || {}; const k = byId(S.kits, i.kitId); const t = byId(S.materiais, i.tecidoId); const foto = k ? kitFoto(k) : p.foto;
+      const conteudo = k ? k.itens.map((c) => { const cp = byId(S.produtos, c.produtoId); return cp ? `${c.qtd}× ${cp.nome}` : ''; }).filter(Boolean).join(', ') : '';
+      return `<tr><td>${foto ? `<img src="${esc(foto)}" alt="">` : ''}</td><td>${esc(nomeItem(i))}</td><td>${esc([conteudo, t && t.nome, i.descricao].filter(Boolean).join(' · '))}</td><td>${i.qtd}</td><td>${money(i.preco)}</td><td>${money(i.qtd * i.preco)}</td></tr>`; }).join('')}
     </tbody></table>
     <p class="r">${d.desconto ? 'Desconto: ' + money(d.desconto) + '<br>' : ''}${d.frete ? 'Frete: ' + money(d.frete) + '<br>' : ''}<b>Total: ${money(Calc.totalPedido(d))}</b><br>
     Pago: ${money(Calc.pagoPedido(d))} · Falta: ${money(Math.max(0, Calc.totalPedido(d) - Calc.pagoPedido(d)))}</p>

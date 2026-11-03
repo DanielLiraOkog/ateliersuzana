@@ -20,4 +20,20 @@ const ped = { itens: [{ qtd: 2, preco: 50, custo: 30 }], desconto: 10, frete: 15
 assert.strictEqual(C.totalPedido(ped), 105);
 assert.strictEqual(C.pagoPedido(ped), 50);
 assert.strictEqual(C.lucroPedido(ped), 30);
+// kit: 2 x produto + embalagem + montagem
+S.produtos = [{ id: 1, ...p, margemAtacado: 30, margemVarejo: 50 }];
+const kit = { itens: [{ produtoId: 1, tecidoId: '', qtd: 2 }], embalagem: 5, tempoMin: 10, margemAtacado: 30, margemVarejo: 50, precoFixo: 0 };
+const ck = C.custoKit(S, kit);
+assert.strictEqual(ck.itens, 67.42);
+assert.strictEqual(ck.embalagem, 5);
+assert.strictEqual(ck.montagem, 1.52);
+assert.strictEqual(ck.total, 73.94);
+assert.strictEqual(ck.atacado, 105.62);              // 73,935 / 0,70
+assert.strictEqual(ck.varejo, 147.87);               // 73,935 / 0,50
+assert.strictEqual(ck.avulsoVarejo, 134.84);         // 2 x 67,42 vendidos separados
+const ck2 = C.custoKit(S, { ...kit, precoFixo: 99 });
+assert.strictEqual(ck2.varejo, 99);
+assert.strictEqual(ck2.economiaPct, 26.6);           // cliente economiza vs. avulso
+assert.strictEqual(ck2.lucroVarejo, 25.06);
+assert.strictEqual(C.custoKit(S, { itens: [] }).total, 0);
 console.log('calc ok');

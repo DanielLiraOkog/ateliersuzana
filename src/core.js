@@ -39,16 +39,16 @@ const CATEGORIAS_DESP = ['Material', 'Aluguel / Luz / Internet', 'Frete / Entreg
 function defaults() {
   return {
     versao: 1,
-    seq: { material: 0, produto: 0, cliente: 0, pedido: 0, numeroPedido: 0, despesa: 0, compra: 0 },
+    seq: { material: 0, produto: 0, kit: 0, cliente: 0, pedido: 0, numeroPedido: 0, despesa: 0, compra: 0 },
     config: { loja: 'Atelier Suzana Lira', salario: 1500, dias: 22, horas: 8, custoFixo: 100, margemAtacado: 30, margemVarejo: 50, telefone: '', rodapePedido: 'Obrigada pela preferência!' },
-    materiais: [], produtos: [], clientes: [], pedidos: [], despesas: [], compras: [],
+    materiais: [], produtos: [], kits: [], clientes: [], pedidos: [], despesas: [], compras: [],
   };
 }
 function migrate(d) {
   const base = defaults();
   d.seq = { ...base.seq, ...(d.seq || {}) };
   d.config = { ...base.config, ...(d.config || {}) };
-  for (const k of ['materiais', 'produtos', 'clientes', 'pedidos', 'despesas', 'compras']) d[k] = d[k] || [];
+  for (const k of ['materiais', 'produtos', 'kits', 'clientes', 'pedidos', 'despesas', 'compras']) d[k] = d[k] || [];
   return d;
 }
 const nextId = (k) => ++S.seq[k];
@@ -190,6 +190,10 @@ actions.go = (d) => go(d.view);
 // ---------- estoque ----------
 // Quanto de cada material um item de pedido consome.
 function consumoItem(item) {
+  if (item.kitId) { // kit: soma o consumo de cada produto que ele leva
+    const k = byId(S.kits, item.kitId);
+    return k ? k.itens.flatMap((c) => consumoItem({ produtoId: Number(c.produtoId), tecidoId: c.tecidoId, qtd: c.qtd * item.qtd })) : [];
+  }
   const p = byId(S.produtos, item.produtoId);
   if (!p) return [];
   const out = [];

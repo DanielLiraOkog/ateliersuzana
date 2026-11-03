@@ -1,4 +1,4 @@
-const NAV = [['painel', '🏠', 'Painel'], ['catalogo', '🖼', 'Catálogo'], ['pedidos', '🧾', 'Pedidos'], ['clientes', '👥', 'Clientes'], ['produtos', '👗', 'Produtos'], ['materiais', '🧵', 'Materiais'], ['financeiro', '💰', 'Financeiro'], ['config', '⚙', 'Configurações']];
+const NAV = [['painel', '🏠', 'Painel'], ['catalogo', '🖼', 'Catálogo'], ['pedidos', '🧾', 'Pedidos'], ['clientes', '👥', 'Clientes'], ['produtos', '👗', 'Produtos'], ['kits', '🎁', 'Kits'], ['materiais', '🧵', 'Materiais'], ['financeiro', '💰', 'Financeiro'], ['config', '⚙', 'Configurações']];
 function boasVindas() {
   const vazio = !S.produtos.length && !S.materiais.length && !S.pedidos.length && !S.clientes.length;
   if (!vazio || S.config.bemVinda) return;
